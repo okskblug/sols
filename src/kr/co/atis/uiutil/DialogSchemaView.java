@@ -104,11 +104,12 @@ public class DialogSchemaView extends JFrame{
 	public DialogSchemaView(File[] files) {
 		try {
 			System.err.println("Log View");
+			JTabbedPane tabPane	= new JTabbedPaneCustom();
 			tabPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
 			for(int i = 0; i < files.length; i++) {
 				File file		= files[i];
 				String sTitle	= file.getName();
-				String sFile		= file.getPath();
+				String sFile	= file.getPath();
 				
 				BufferedReader inputFile = new BufferedReader(new FileReader(sFile));
 				String line;
@@ -119,12 +120,17 @@ public class DialogSchemaView extends JFrame{
 				}
 				inputFile.close();
 				String sResult	= sbLine.toString();
+				
+				
+				tabPane.addTab(sTitle, DialogSchemaViewCommon(this, "LOG", sTitle, sResult));
+				tabPane.setTabComponentAt(0, new ButtonTabComponent(tabPane, "LOG", false, new HashMap()));
 			}
 			/*********************************************************/
 			BusinessViewMain.initUIManager();
 			
 			setTitle("LOG");
 			setBackground(Color.WHITE);
+			
 			setContentPane(tabPane);
 	        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 	        setSize(iWidth, iHeight);	// Popup Size
