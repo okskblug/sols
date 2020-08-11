@@ -1,9 +1,10 @@
-﻿package kr.co.atis.main;
+package kr.co.atis.main;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -12,15 +13,18 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -34,6 +38,7 @@ import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JLayer;
 import javax.swing.JList;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -43,6 +48,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JProgressBar;
 import javax.swing.JRadioButton;
+import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
 import javax.swing.JSplitPane;
@@ -52,14 +58,14 @@ import javax.swing.JTextField;
 import javax.swing.JViewport;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
-import javax.swing.LookAndFeel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
+import javax.swing.Timer;
 import javax.swing.UIManager;
-import javax.swing.border.Border;
+import javax.swing.UIManager.LookAndFeelInfo;
+import javax.swing.UnsupportedLookAndFeelException;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.ColorUIResource;
 import javax.swing.plaf.metal.MetalComboBoxButton;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -71,6 +77,7 @@ import com.matrixone.apps.domain.util.MqlUtil;
 import kr.co.atis.db.SchemaImport;
 import kr.co.atis.uiutil.ButtonHideShowComponent;
 import kr.co.atis.uiutil.ButtonTabComponent;
+import kr.co.atis.uiutil.CBListener;
 import kr.co.atis.uiutil.DialogSchemaChildrenView;
 import kr.co.atis.uiutil.DialogSchemaCompare;
 import kr.co.atis.uiutil.DialogSchemaView;
@@ -79,11 +86,14 @@ import kr.co.atis.uiutil.IconListRenderer;
 import kr.co.atis.uiutil.JMenuItemExport;
 import kr.co.atis.uiutil.JTabbedPaneCustom;
 import kr.co.atis.uiutil.ProgressBar;
+import kr.co.atis.uiutil.ProgressCircleUI;
+import kr.co.atis.uiutil.ProgressListener;
 import kr.co.atis.uiutil.RoundedPanel;
 import kr.co.atis.uiutil.SteppedComboBox;
 import kr.co.atis.uiutil.Switch;
 import kr.co.atis.uiutil.TextLineNumber;
 import kr.co.atis.uiutil.URLParseTable;
+import kr.co.atis.uiutil.WaitLayerUI;
 import kr.co.atis.util.SchemaAutoCompare;
 import kr.co.atis.util.SchemaCompareMain;
 import kr.co.atis.util.SchemaConstants;
@@ -97,11 +107,16 @@ import matrix.util.StringList;
 
 /**
  * JTextArea - Include Text Line Number
+ * Panel Structure
+ * 1. Main
+ *    - Top
+ *    - Bottom
+ *    	- Left (List)
+ * 		- Right (View)
  * @author ihjang
  *
  */
 public class BusinessViewMain extends JFrame {
-	public static final LookAndFeel laf		= UIManager.getLookAndFeel();
 	public static Context ctx1	= null;	// Default Context
 	public static Context ctx2	= null;	// Compare Context
 	public static Context ctx3	= null;	// Default Context - Used by Background
@@ -111,12 +126,23 @@ public class BusinessViewMain extends JFrame {
 	
 	// Left Search Area
 	private static SteppedComboBox comboMQLType;
-	public static JProgressBar progress		= new JProgressBar(0, 100);	// Find progressbar
+	public static WaitLayerUI layerUI = new WaitLayerUI();
+	public static ProgressCircleUI glassPane;
+	public static final JProgressBar progress2 = new JProgressBar() {
+		@Override
+		public void updateUI() {
+			super.updateUI();
+			setUI(new ProgressCircleUI());
+			setBorder(BorderFactory.createEmptyBorder(25, 25, 25, 25));
+		}
+	};
+	public static float progressVal = 0;
 	
 	private static JTabbedPane tabPane;	
     private static JTextField txtField;
     private JMenuItem tabComponentsItem;
     private JMenuItem tabScrollItem;
+    public static JMenuItem searchCaseSensitive;
     private static JRadioButton optionDefault;
     private static JRadioButton optionCompare;
     public static Switch button3			= new Switch();	// Background On/Off
@@ -141,10 +167,7 @@ public class BusinessViewMain extends JFrame {
     public static Map iconsList 			= new HashMap();	// List Icon
     public static Map<Object, Icon> icons 	= new HashMap<Object, Icon>();	// Search Combobox Icon
     
-	private static final Color lsb 				= new Color(0, 84, 255, 80);		// List Selection Background Color
-    private static final Color UnSelColor 	= new Color(217, 229, 255);	// UnSelected Color
-    private static final Color contAreaColor = Color.WHITE;
-    
+	private static final Color lsb 			= new Color(0, 84, 255, 80);// List Selection Background Color
     
     public static Map mAttrSettingMap			= new HashMap();
     
@@ -162,6 +185,7 @@ public class BusinessViewMain extends JFrame {
      * All List Information - Compare List
      */
     public static HashMap mDefaultListMap	= new HashMap();
+    public static int fontSize = 15;
     
 	/**
 	 * Set Context Information
@@ -175,7 +199,7 @@ public class BusinessViewMain extends JFrame {
 
 			context = new Context(ctx);
 			context.setUser("admin_platform");
-			context.setPassword("Qwer1234");
+				context.setPassword("Qwer1234");
 			context.connect();
 		} catch (MatrixException e) {
 			// TODO Auto-generated catch block
@@ -194,9 +218,9 @@ public class BusinessViewMain extends JFrame {
 		comboDefault 	= new JComboBox(contextArr);
 		comboCompare 	= new JComboBox(contextArr);
 		comboDefault.setPreferredSize(new Dimension(250, 25));
-		comboDefault.setLightWeightPopupEnabled(false); // z-index 理쒖긽�쐞
+		comboDefault.setLightWeightPopupEnabled(false); // z-index
 		comboCompare.setPreferredSize(new Dimension(250, 25));
-		comboCompare.setLightWeightPopupEnabled(false); // z-index 理쒖긽�쐞
+		comboCompare.setLightWeightPopupEnabled(false); // z-index
 		
 		comboDefault.setSelectedIndex(1);
         Component[] comp = comboDefault.getComponents();
@@ -208,37 +232,29 @@ public class BusinessViewMain extends JFrame {
             }
         }
         
-		comboDefault.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (e.getStateChange() == ItemEvent.SELECTED) {
-					mTitleMap.clear();
-					tabPane.removeAll();
-					ctx1 = setContextInfo(comboDefault.getSelectedItem().toString());
-					ctx3 = setContextInfo(comboDefault.getSelectedItem().toString());
-					autoCompare.changeContextAutoCompare(ctx3, ctx4);	// Context 蹂�寃�
-	//    			[LOG]
-	    			try {
-						SchemaLogs.writeLogFile("CHANGE", "Context Change [Default : " + comboDefault.getSelectedItem().toString() + "]");
-					} catch (Exception e1) {
-						e1.printStackTrace();
-					}
+		comboDefault.addItemListener(e -> {
+			if (e.getStateChange() == ItemEvent.SELECTED) {
+				mTitleMap.clear();	tabPane.removeAll();
+				ctx1 = setContextInfo(comboDefault.getSelectedItem().toString());
+				ctx3 = setContextInfo(comboDefault.getSelectedItem().toString());
+				autoCompare.changeContextAutoCompare(ctx3, ctx4);	// Context Change
+    			try {	// [LOG]
+					SchemaLogs.writeLogFile("CHANGE", "Context Change [Default : " + comboDefault.getSelectedItem().toString() + "]");
+				} catch (Exception e1) {
+					e1.printStackTrace();
 				}
 			}
 		});
-		comboCompare.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (e.getStateChange() == ItemEvent.SELECTED) {
-					mTitleMap.clear();
-					tabPane.removeAll();
-					ctx2 = setContextInfo(comboCompare.getSelectedItem().toString());
-					ctx4 = setContextInfo(comboCompare.getSelectedItem().toString());
-					autoCompare.changeContextAutoCompare(ctx3, ctx4);	// Context 蹂�寃�
-	//    			[LOG]
-	    			try {
-	    				SchemaLogs.writeLogFile("CHANGE", "Context Change [Compare : " + comboCompare.getSelectedItem().toString() + "]");
-					} catch (Exception e1) {
-						e1.printStackTrace();
-					}
+		comboCompare.addItemListener(e -> {
+			if (e.getStateChange() == ItemEvent.SELECTED) {
+				mTitleMap.clear();	tabPane.removeAll();
+				ctx2 = setContextInfo(comboCompare.getSelectedItem().toString());
+				ctx4 = setContextInfo(comboCompare.getSelectedItem().toString());
+				autoCompare.changeContextAutoCompare(ctx3, ctx4);	// Context change
+    			try {	// [LOG]
+    				SchemaLogs.writeLogFile("CHANGE", "Context Change [Compare : " + comboCompare.getSelectedItem().toString() + "]");
+				} catch (Exception e1) {
+					e1.printStackTrace();
 				}
 			}
 		});
@@ -267,42 +283,49 @@ public class BusinessViewMain extends JFrame {
 	 * UI configuration
 	 */
 	void createTabbedPane() {
-		setTabbedPaneDesign();
 	    
+		setTabbedPaneDesign();
 		int iWidth					= Integer.parseInt(properties.getProperty("Window.Width"));
 		int iHeight					= Integer.parseInt(properties.getProperty("Window.Height"));
         
 		
-		/************************** paneMainSplit ********************************/
+		/************************** Main Panel Split [B] ********************************/
         // Main Frame default configuration
 //		Image im = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/images/logo1.png"));
 //		setIconImage(im);
-	    setContentPane(paneMainSplit);
+//	    setContentPane(paneMainSplit);
+        JLayer<JSplitPane> jlayer = new JLayer<JSplitPane>(paneMainSplit, layerUI);
+	    
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        progress2.setBackground(new Color(235, 245, 251, 10));
+        progress2.setForeground(new Color(0xAA_34_98_D8, true));
+        CBListener listener = new CBListener(null, null, progress2, paneMainSplit);
+        progress2.addMouseListener(listener);
+        progress2.addMouseMotionListener(listener);
+		setGlassPane(progress2);
+		add(jlayer);
         setSize(iWidth, iHeight);	// Popup Size
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setVisible(true);
         setTitle("MQL Viewer");
-        /************************** paneMainSplit ********************************/
+        /************************** Main Panel Split [E] ********************************/
         
         
-        /******************** Left Panel Child (Search) **************************/
+        /******************** Top Panel Child (Search, Context) [B] **************************/
         comboMQLType 		= new SteppedComboBox(SchemaConstants.getMQLTypeList());	// MQL Type Combobox
-        comboMQLType.setPreferredSize(new Dimension(45, 25));
+        comboMQLType.setPreferredSize(new Dimension(43, 25));
         comboMQLType.setRenderer(new IconListRenderer(icons));
         comboMQLType.setPopupWidth(250);
-        comboMQLType.addKeyListener(new KeyListener() {
-        	@Override
-            public void keyTyped(KeyEvent e) {}
-            @Override
-            public void keyReleased(KeyEvent e) {}
+        comboMQLType.setBorder(null);
+        comboMQLType.addKeyListener(new KeyAdapter() {
             @Override
             public void keyPressed(KeyEvent e) {
-            	    if(e.getKeyCode() == KeyEvent.VK_ENTER) {
-            	        ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_FIND);
-                    }
+        	    if(e.getKeyCode() == KeyEvent.VK_ENTER) {
+        	        ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_FIND);
                 }
-            });
+            }
+        });
         
         JButton button1		= new JButton(setImageIcon("/images/findFocusOut.png"));	// Find Button
         JButton button2		= new JButton(setImageIcon("/images/viewFocusOut.png"));	// View Button
@@ -316,26 +339,10 @@ public class BusinessViewMain extends JFrame {
         button2.setContentAreaFilled(false);
         
         txtField			= new JTextField();	// Search Field
-//        txtField.setBorder(new LineBorder(new Color(0, 0, 0, 80), 1, true));
         txtField.setBorder(null);
         txtField.setText(properties.getProperty("Search.Prefix"));
         txtField.setPreferredSize(new Dimension(300, 25));
-        txtField.addKeyListener(new KeyListener() {
-			@Override
-			public void keyTyped(KeyEvent e) {}
-			@Override
-			public void keyReleased(KeyEvent e) {}
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if(e.getKeyCode() == KeyEvent.VK_ENTER) {
-					ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_FIND);
-				}
-			}
-		});
-        
-        progress.setBackground(contAreaColor);	// Search Progress bar
-		progress.setBorderPainted(false);
-		progress.setPreferredSize(new Dimension(200, 10));
+        txtField.addKeyListener(new KeyHandler());
         
         // Find Button Action
 		button1.addMouseListener(new MouseAdapter() {
@@ -355,55 +362,44 @@ public class BusinessViewMain extends JFrame {
 			}
 		});
 		
-		/***************** Top Panel Child (Search, Context) *********************/
 		JPanel panelTop	= new JPanel();
 		panelTop.setBorder(new EmptyBorder(5, 5, 5, 5));
         panelTop.setLayout(new GridBagLayout());
-        panelTop.setBackground(contAreaColor);
+        panelTop.setBackground(new Color(0, 86, 133));
         
 		JSeparator separator1	= new JSeparator(SwingConstants.VERTICAL);
 		separator1.setPreferredSize(new Dimension(15, 1));
 		separator1.setForeground(Color.LIGHT_GRAY);
-//		JSeparator separator2	= new JSeparator(SwingConstants.VERTICAL);
-//		separator2.setPreferredSize(new Dimension(15, 1));
-//		separator2.setForeground(Color.LIGHT_GRAY);
-//		JSeparator separator3	= new JSeparator(SwingConstants.VERTICAL);
-//		separator3.setPreferredSize(new Dimension(15, 1));
-//		separator3.setForeground(Color.LIGHT_GRAY);
 		JLabel labelMain		= new JLabel(properties.getProperty("Label.Default"));
 		JLabel labelSub			= new JLabel(properties.getProperty("Label.Compare"));
 		JLabel labelSwitch		= new JLabel(properties.getProperty("Label.Switch"));
-		labelMain.setPreferredSize( new Dimension(150, 25));
-		labelSub.setPreferredSize( new Dimension(150, 25));
-		labelSwitch.setPreferredSize( new Dimension(150, 25));
+		labelMain.	setPreferredSize(new Dimension(150, 25));	labelMain.setFont(new Font("D2Coding", Font.BOLD, 15));		labelMain.setForeground(Color.WHITE);
+		labelSub.	setPreferredSize(new Dimension(150, 25));	labelSub.setFont(new Font("D2Coding", Font.BOLD, 15));		labelSub.setForeground(Color.WHITE);
+		labelSwitch.setPreferredSize(new Dimension(150, 25));	labelSwitch.setFont(new Font("D2Coding", Font.BOLD, 15));	labelSwitch.setForeground(Color.WHITE);
 		
 		optionDefault = new JRadioButton(properties.getProperty("Button.DefaultMode"));
         optionCompare = new JRadioButton(properties.getProperty("Button.CompareMode"));
-        optionDefault.setBackground(contAreaColor);
-        optionCompare.setBackground(contAreaColor);
+        optionDefault.setBackground(new Color(0, 86, 133));
+        optionCompare.setBackground(new Color(0, 86, 133));
+        optionDefault.setFont(new Font("D2Coding", Font.BOLD, 15));	optionDefault.setForeground(Color.WHITE);
+        optionCompare.setFont(new Font("D2Coding", Font.BOLD, 15));	optionCompare.setForeground(Color.WHITE);
         
         ButtonGroup modeGroup = new ButtonGroup();	// Context Mode - Radio Group
         modeGroup.add(optionDefault);
         modeGroup.add(optionCompare);
         optionDefault.setSelected(true);
         
-        
-        
 		JPanel panelRound	= new RoundedPanel();
-		panelRound.setBorder(new EmptyBorder(5, 5, 5, 5));
 		panelRound.setLayout(new GridBagLayout());
-		panelRound.setBackground(contAreaColor);
-		panelRound.setPreferredSize(new Dimension(300, 40));
-        
 		
 		// Rounded Area
 		GridBagConstraints c1 	= new GridBagConstraints();
         c1.fill = GridBagConstraints.HORIZONTAL;
         c1.gridx = 0;
         c1.gridy = 0;
+        c1.insets = new Insets(0, 5, 0, 0);
         panelRound.add(comboMQLType, c1);
         
-        c1.insets = new Insets(0, 10, 0, 0);
 		c1.gridx = 1;
 		panelRound.add(txtField, c1);	// Search Field
         
@@ -411,7 +407,8 @@ public class BusinessViewMain extends JFrame {
 		panelRound.add(button1, c1);	// Find Button
         
 		c1.gridx = 3;
-		panelRound.add(button2, c1);	//
+		c1.insets = new Insets(0, 0, 0, 5);
+		panelRound.add(button2, c1);	// View Button
         
         
         // Row 1
@@ -438,7 +435,7 @@ public class BusinessViewMain extends JFrame {
 		c.insets = new Insets(0, 0, 0, 0);
 		panelTop.add(comboDefault, c);
 		
-		
+		/****************** Background Switch not Delete [B] ****************************/
 		//c.insets = new Insets(0, 30, 0, 0);
 		//c.gridx = 9;
 		//c.gridheight = 2;
@@ -453,6 +450,7 @@ public class BusinessViewMain extends JFrame {
 		//c.gridx = 11;
 		//c.insets = new Insets(0, 0, 0, 0);
 		//panelTop.add(button3, c);	// Background Switch
+		/****************** Background Switch not Delete [E] ****************************/
 		
 		
 		
@@ -464,8 +462,8 @@ public class BusinessViewMain extends JFrame {
 		
 		c.gridx = 1;
 		JPanel tempPanel	= new JPanel();
-		tempPanel.setBackground(Color.WHITE);
 		tempPanel.setPreferredSize(new Dimension(200, 10));
+		tempPanel.setBackground(new Color(0, 86, 133));
 		panelTop.add(tempPanel, c);
 		
 		c.gridx = 2;
@@ -481,57 +479,61 @@ public class BusinessViewMain extends JFrame {
 
 		
 		// Row 3
-		c.gridx = 0;
-		c.gridy = 2;
-		c.gridwidth = 6;
-		panelTop.add(progress, c);
+//		c.gridx = 0;
+//		c.gridy = 2;
+//		c.gridwidth = 6;
+//		panelTop.add(progress, c);
 		
 		// Row 4
 		//c.insets = new Insets(0, 0, 0, 0);
 		//c.gridx = 0;
-		c.gridy = 3;
+		c.gridy = 2;
 		c.gridwidth = 1;
 		// c.gridwidth = 12;
 		JButton toggleBtn	= new ButtonHideShowComponent();
 		toggleBtn.setPreferredSize(new Dimension(200, 40));
 		
 		toggleBtn.addMouseListener(new MouseAdapter() {
-			public void mouseClicked(MouseEvent mouseEvent) {
-				if(SwingUtilities.isLeftMouseButton(mouseEvent)) {
+			public void mouseClicked(MouseEvent e) {
+				if(SwingUtilities.isLeftMouseButton(e)) {
 					comboCompare.setVisible(!comboCompare.isVisible());
 					comboDefault.setVisible(!comboDefault.isVisible());
 				}
 			}
 		});
 		panelTop.add(toggleBtn, c);
-		
-		progressLoad.setBackground(contAreaColor);
-		progressLoad.setForeground(new Color(0, 255, 0, 80));
 		progressLoad.setPreferredSize(new Dimension(50, 10));
-		Border border	= BorderFactory.createTitledBorder(null, null, 0, 0, null, Color.BLUE);
-		progressLoad.setBorder(border);
-		
-		/***************** Top Panel Child (Search, Context) *********************/
+		/******************** Top Panel Child (Search, Context) [E] **************************/
 
 		
-		/********************* Left Panel Child (List) ***************************/
+		/********************* Left Panel Child (List) [B] ***************************/
 		JScrollPane listScroll	= new JScrollPane();
         list 					= new JList();
         
         listScroll.setViewportView(list);	// Scroll setting
         listScroll.setBorder(null);
-        listScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        listScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);	// horizontal scrollbar is hide
         
         //list
-        list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);	// Multiple select
         list.addMouseListener(new MouseAdapter() {	// List Double Click
-        	public void mouseClicked(MouseEvent evt) {
-                if (evt.getClickCount() == 2) {	// Double-click detected
+        	public void mouseClicked(MouseEvent e) {
+                if (e.getClickCount() == 2) {	// Double-click detected
                 	ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_VIEW);
-                } else if (evt.getClickCount() == 3) {}	// Triple-click detected
+                } else if (e.getClickCount() == 3) {}	// Triple-click detected
             }
 		});
-		/********************* Left Panel Child (List) ***************************/
+        list.addKeyListener(new KeyAdapter() {
+        	@Override
+            public void keyPressed(KeyEvent e) {
+        	    if(e.getKeyCode() == KeyEvent.VK_ENTER) {
+        	        ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_VIEW);
+                }
+            }
+		});
+        list.setFixedCellHeight(25);
+		list.setSelectionBackground(lsb);
+        /********************* Left Panel Child (List) [E] ***************************/
         
         
         /******************* Right Panel Child (Content) *************************/
@@ -542,12 +544,7 @@ public class BusinessViewMain extends JFrame {
 				}
 			}
 		});
-
-        tabPane.addKeyListener(new KeyListener() {
-			@Override
-			public void keyTyped(KeyEvent e) {}
-			@Override
-			public void keyReleased(KeyEvent e) {}
+        tabPane.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e) {
 				if(e.isShiftDown() && e.isControlDown() && e.getKeyCode() == KeyEvent.VK_W){
@@ -588,16 +585,11 @@ public class BusinessViewMain extends JFrame {
 		paneBottom.setDividerLocation(300);      
 		paneBottom.setDividerSize(0);
 		paneBottom.setBorder(null);
-		
 	}
 	
-	//private void setIconImage(URL resource) {
-		// TODO Auto-generated method stub
-		
-	//}
 
 	public static void setUIFont(javax.swing.plaf.FontUIResource f) {
-		java.util.Enumeration keys = UIManager.getDefaults().keys();
+		Enumeration keys = UIManager.getDefaults().keys();
 		while (keys.hasMoreElements()) {
 			Object key = keys.nextElement();
 			Object value = UIManager.get(key);
@@ -621,31 +613,38 @@ public class BusinessViewMain extends JFrame {
 		icons.putAll(SchemaConstants.iconImageForList());
 		
 		JMenuBar menuBar = new JMenuBar();
-		menuBar.setBackground(new Color(250, 250, 250));
 		// create Options menu
 		tabComponentsItem = new JCheckBoxMenuItem("Use Tab Components          ", true);
 		tabComponentsItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.ALT_MASK));
-		tabComponentsItem.setBackground(Color.WHITE);
-		tabComponentsItem.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				for (int i = 0; i < tabPane.getTabCount(); i++) {
-					if (tabComponentsItem.isSelected()) {
-						initTabComponent(i);
-					} else {
-						tabPane.setTabComponentAt(i, null);
-					}
-				}
-			}
-		});
 		
 		tabScrollItem = new JCheckBoxMenuItem("Use Tab Scroll", true);
-		tabScrollItem.setBackground(Color.WHITE);
-		tabScrollItem.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				tabPane.setTabLayoutPolicy(tabScrollItem.isSelected() ? JTabbedPane.SCROLL_TAB_LAYOUT : JTabbedPane.WRAP_TAB_LAYOUT);
-			}
-		});
-		
+
+		// Theme Change Testing - [B]
+		JMenu menuTheme = new JMenu("Theme (TEST...)");
+		UIManager.LookAndFeelInfo looks[] = UIManager.getInstalledLookAndFeels();
+		ButtonGroup group = new ButtonGroup();
+		for (LookAndFeelInfo info : looks) {
+			JRadioButtonMenuItem button = new JRadioButtonMenuItem(info.getName());
+			button.setActionCommand(info.getClassName());
+			group.add(button);
+			menuTheme.add(button).addActionListener(e -> {
+				String lafClassName = null;
+				lafClassName = e.getActionCommand();
+				String finalLafClassName = lafClassName;
+				try {
+					UIManager.setLookAndFeel(finalLafClassName);
+					SwingUtilities.updateComponentTreeUI(paneMainSplit);
+					setUIFont(new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, fontSize));	// All Component Setting Font
+				} catch (Exception exception) {
+					JOptionPane.showMessageDialog(paneMainSplit, "Can't change look and feel", "Invalid PLAF", JOptionPane.ERROR_MESSAGE);
+				}
+			});
+			if("com.sun.java.swing.plaf.windows.WindowsLookAndFeel".equals(info.getClassName()))
+				button.setSelected(true);
+		}
+		// Theme Change Testing - [E]
+
+		searchCaseSensitive = new JCheckBoxMenuItem("Case sensitive", true);
 		
 		JMenu exportMQL 			= new JMenu(properties.getProperty("Search.Menu.ExecuteMQL"));
 		exportMQL.add(new JMenuItemExport("Attribute", 					SchemaConstants.ATTRIBUTE, 		(ImageIcon) icons.get(SchemaConstants.ATTRIBUTE)));
@@ -664,142 +663,154 @@ public class BusinessViewMain extends JFrame {
 		exportMQL.add(new JMenuItemExport(SchemaConstants.TRIGGER,		SchemaConstants.TRIGGER, 		(ImageIcon) icons.get(SchemaConstants.TRIGGER)));
 		exportMQL.add(new JMenuItemExport(SchemaConstants.GENERATOR, 	SchemaConstants.GENERATOR, 		(ImageIcon) icons.get(SchemaConstants.GENERATOR)));
 
-		
-		JMenuItem menuItemExit	= new JMenuItem(properties.getProperty("Search.Menu.Exit"));
+		JMenuItem menuItemExit		= new JMenuItem(properties.getProperty("Search.Menu.Exit"));
 		menuItemExit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F4, InputEvent.ALT_MASK));
-		menuItemExit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				System.exit(0);
-			}
-		});
-		
 		
 		JMenuItem menuItemParser	= new JMenuItem("URL Parser        ", setImageIcon("/images/parser.png"));
 		menuItemParser.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_P, InputEvent.ALT_MASK));
-		menuItemParser.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				String sURL			= JOptionPane.showInputDialog(null, properties.getProperty("Message.InputURL"));	// Input MQL Name
-				
-				if(null == sURL)
-					return;
-				
-				new URLParseTable(sURL);
-			}
-		});
 		
 		JMenuItem menuItemLogs		= new JMenuItem(properties.getProperty("Search.MenuItem.LogsView"), setImageIcon("/images/LOG16.png"));
 		menuItemLogs.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, InputEvent.ALT_MASK));
-		menuItemLogs.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					SchemaLogs.logsFileChooser();
-				} catch (Exception ee) {
-					ee.printStackTrace();
+		
+		JMenuItem menuItemChildren	= new JMenuItem(properties.getProperty("Search.MenuItem.Children") + "      ", setImageIcon("/images/node-tree.png"));
+		menuItemChildren.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.ALT_MASK));
+
+		JMenu menuFile 		= new JMenu(properties.getProperty("Search.Menu.File"));
+		JMenu menuView		= new JMenu(properties.getProperty("Search.Menu.View"));
+		JMenu menuSettings	= new JMenu(properties.getProperty("Search.Menu.Settings"));
+		menuFile.setMnemonic(KeyEvent.VK_F); // alt + F
+		menuView.setMnemonic(KeyEvent.VK_W); // alt + W
+		menuSettings.setMnemonic(KeyEvent.VK_T); // alt + T
+		
+		menuFile.add(menuItemLogs).addActionListener(e -> {try {	SchemaLogs.logsFileChooser();	} catch (Exception ee) {ee.printStackTrace();}});
+		menuFile.add(exportMQL);
+		menuFile.add(new JSeparator());
+		menuFile.add(menuItemExit).addActionListener(e -> {System.exit(0);});
+		menuView.add(menuItemParser).addActionListener(e -> {
+			String sURL			= JOptionPane.showInputDialog(null, properties.getProperty("Message.InputURL"));	// Input MQL Name
+			if(null == sURL)	return;
+			new URLParseTable(sURL);
+		});
+		
+		menuView.add(new JSeparator());
+		menuView.add(menuItemChildren).addActionListener(e -> {
+			JPanel panel 			= new JPanel(new GridLayout(0, 1));
+
+			String[] items 			= SchemaConstants.getHierarchyTypeList();
+			JComboBox<String> combo = new JComboBox<>(items);
+			combo.setRenderer(new IconListRenderer(icons));
+	        JTextField field1 		= new JTextField("");
+	        
+	        panel.add(new JLabel("Type : "));
+	        panel.add(combo);
+	        panel.add(new JLabel("Name : "));
+	        panel.add(field1);
+	        int result = JOptionPane.showConfirmDialog(null, panel, "Selected Item", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+	        if (result == JOptionPane.OK_OPTION) {
+	        	String sType	= combo.getSelectedItem().toString();
+	        	String sName	= field1.getText();
+	        	if(null == sName)	return;
+				new DialogSchemaChildrenView(ctx1, sType, sName);
+	        } else {
+	            System.out.println("Cancelled");
+	        }
+		});
+		
+		menuSettings.add(tabComponentsItem).addActionListener(e -> {
+			for (int i = 0; i < tabPane.getTabCount(); i++) {
+				if (tabComponentsItem.isSelected()) {
+					initTabComponent(i);
+				} else {
+					tabPane.setTabComponentAt(i, null);
 				}
 			}
 		});
 		
-		JMenuItem menuItemChildren		= new JMenuItem(properties.getProperty("Search.MenuItem.Children") + "      ", setImageIcon("/images/node-tree.png"));
-		menuItemChildren.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, InputEvent.ALT_MASK));
-		menuItemChildren.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				JPanel panel 			= new JPanel(new GridLayout(0, 1));
-
-				String[] items 			= SchemaConstants.getHierarchyTypeList();
-				JComboBox<String> combo = new JComboBox<>(items);
-				combo.setRenderer(new IconListRenderer(icons));
-		        JTextField field1 		= new JTextField("");
-//		        JCheckBox checkbox		= new JCheckBox("Top-down (true), Bottom-up (false)", true);	// default - true
-		        
-		        panel.add(new JLabel("Type : "));
-		        panel.add(combo);
-		        panel.add(new JLabel("Name : "));
-		        panel.add(field1);
-//		        panel.add(checkbox);
-		        int result = JOptionPane.showConfirmDialog(null, panel, "Selected Item", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-		        String sType	= "";
-		        String sName	= "";
-		        if (result == JOptionPane.OK_OPTION) {
-		        	sType		= combo.getSelectedItem().toString();
-		        	sName		= field1.getText();
-		        	
-		        	if(null == sName)
-						return;
-					
-					new DialogSchemaChildrenView(ctx1, sType, sName);
-					
-		        } else {
-		            System.out.println("Cancelled");
+		JMenuItem zoomIn	= new JMenuItem("Zoom In");
+		zoomIn.addMouseWheelListener(new MouseWheelListener() {
+			
+			@Override
+			public void mouseWheelMoved(MouseWheelEvent e) {
+				// if (e.isControlDown())
+		        {
+		            if (e.getWheelRotation() < 0) {
+		            	UIManager.put("TextArea.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (++fontSize)));
+						UIManager.put("Panel.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (fontSize)));
+						SwingUtilities.updateComponentTreeUI(paneMainSplit);
+//		                zoomIn(e);
+		            } else {
+		            	UIManager.put("TextArea.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (--fontSize)));
+		            	UIManager.put("Panel.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (fontSize)));
+		            	SwingUtilities.updateComponentTreeUI(paneMainSplit);
+//		                zoomOut(e);
+		            }
+		            e.consume();
 		        }
 			}
 		});
 		
-		JSeparator js1		= new JSeparator();
-		JSeparator js2		= new JSeparator();
-		js1.setForeground(Color.LIGHT_GRAY);
-		js2.setForeground(Color.LIGHT_GRAY);
-		JMenu menuFiles 	= new JMenu(properties.getProperty("Search.Menu.Files"));
-		JMenu menuWindow 	= new JMenu(properties.getProperty("Search.Menu.Window"));
-		JMenu menuTest		= new JMenu(properties.getProperty("Search.Menu.Test"));
-		menuFiles.setMnemonic(KeyEvent.VK_F); // alt + F
-		menuWindow.setMnemonic(KeyEvent.VK_W); // alt + W
 		
-		menuFiles.add(tabComponentsItem);
-		menuFiles.add(tabScrollItem);
-		menuFiles.add(js1);
-		menuFiles.add(exportMQL);
-		menuFiles.add(js2);
-		menuFiles.add(menuItemExit);
-		menuWindow.add(menuItemParser);
-		menuWindow.add(menuItemLogs);
-		menuTest.add(menuItemChildren);
-		menuBar.add(menuFiles);
-		menuBar.add(menuWindow);
-		menuBar.add(menuTest);
+		
+		
+		JMenuItem zoomOut	= new JMenuItem("Zoom Out");
+		zoomOut.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_MINUS, InputEvent.CTRL_MASK));
+		
+		
+		menuSettings.add(tabScrollItem).addActionListener(e -> {tabPane.setTabLayoutPolicy(tabScrollItem.isSelected() ? JTabbedPane.SCROLL_TAB_LAYOUT : JTabbedPane.WRAP_TAB_LAYOUT);});
+		menuSettings.add(new JSeparator());
+		menuSettings.add(searchCaseSensitive);
+		menuSettings.add(menuTheme);
+		menuSettings.add(new JSeparator());
+//		menuSettings.add(zoomIn).addActionListener(e -> {
+//			UIManager.put("TextArea.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (++fontSize)));
+//			UIManager.put("Panel.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (fontSize)));
+//			SwingUtilities.updateComponentTreeUI(paneMainSplit);
+//		});
+//		menuSettings.add(zoomOut).addActionListener(e -> {
+//			if(fontSize > 5) {
+//				UIManager.put("TextArea.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (--fontSize)));
+//				UIManager.put("Panel.font", new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, (fontSize)));
+//				SwingUtilities.updateComponentTreeUI(paneMainSplit);
+//			}
+//		});
+		menuBar.add(menuFile);
+		menuBar.add(menuView);
+		menuBar.add(menuSettings);
 		setJMenuBar(menuBar);
 		
 		
 		/********************** Popup Menu **********************/
 		JMenuItem compareView	= new JMenuItem(properties.getProperty("Label.CompareView"), setImageIcon("/images/comparison16.png"));
-		JSeparator js			= new JSeparator();
 		JMenuItem insert		= new JMenuItem(properties.getProperty("Label.InsertView"), setImageIcon("/images/insertList.png"));
 		applyMenu.add(compareView);
-		applyMenu.add(js);
+		applyMenu.add(new JSeparator());
 		applyMenu.add(insert);
 
 		
-		compareView.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				showAddMQLDialog(false);
-			}
-		});
-		
-		insert.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				int response = JOptionPane.showConfirmDialog(null, properties.getProperty("Message.InsertAlert"), "�븣由�", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-
-				if (response == JOptionPane.NO_OPTION) {
-				} else if (response == JOptionPane.YES_OPTION) {
-					JScrollPane sc 	= (JScrollPane) tabPane.getSelectedComponent();
-					JViewport vp	= sc.getViewport();
-					JTextArea ta	= (JTextArea) vp.getComponent(0);
-					
-					SchemaImport si	= new SchemaImport();
+		compareView.addActionListener(e -> {showAddMQLDialog(false);	});
+		insert.addActionListener(e -> {
+			int response = JOptionPane.showConfirmDialog(null, properties.getProperty("Message.InsertAlert"), "Confirm", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+			if (response == JOptionPane.NO_OPTION) {
+			} else if (response == JOptionPane.YES_OPTION) {
+				JScrollPane sc 	= (JScrollPane) tabPane.getSelectedComponent();
+				JViewport vp	= sc.getViewport();
+				JTextArea ta	= (JTextArea) vp.getComponent(0);
+				
+				SchemaImport si	= new SchemaImport();
+				try {
+					si.importMQL(ctx2, ta.getText());
+					JOptionPane.showMessageDialog(null, "Insert MQL Success!!!");
+					SchemaLogs.writeLogFile("INFO  ", "\r\n[SUCCESS]\r\n"+ta.getText());	// [LOG]
+				} catch (Exception e1) {
+					e1.printStackTrace();
+					JOptionPane.showMessageDialog(null, e1.getMessage());
 					try {
-						si.importMQL(ctx2, ta.getText());
-						JOptionPane.showMessageDialog(null, "Insert MQL Success!!!");
-						SchemaLogs.writeLogFile("INFO  ", "\r\n[SUCCESS]\r\n"+ta.getText());	// [LOG]
-					} catch (Exception e1) {
-						e1.printStackTrace();
-						JOptionPane.showMessageDialog(null, e1.getMessage());
-						try {
-							SchemaLogs.writeLogFile("INFO  ", "\r\n[FAIL]\r\n"+ta.getText()+"\r\n"+e1.getMessage());	// [LOG]
-						} catch (Exception ee) {
-							ee.printStackTrace();
-						}
+						SchemaLogs.writeLogFile("INFO  ", "\r\n[FAIL]\r\n"+ta.getText()+"\r\n"+e1.getMessage());	// [LOG]
+					} catch (Exception ee) {
+						ee.printStackTrace();
 					}
-				} else if (response == JOptionPane.CLOSED_OPTION) {
 				}
+			} else if (response == JOptionPane.CLOSED_OPTION) {
 			}
 		});
 		
@@ -808,103 +819,129 @@ public class BusinessViewMain extends JFrame {
 		JMenuItem dialogNewWin		= new JMenuItem("Open New Window", setImageIcon("/images/view.png"));
 		JMenuItem exportList		= new JMenuItem("Export Select", setImageIcon("/images/exportExcel.png"));
 		JMenuItem exportListAll		= new JMenuItem("Export All", setImageIcon("/images/exportExcel.png"));
-		JSeparator menuSep			= new JSeparator(SwingConstants.HORIZONTAL);
-		menuSep.setPreferredSize(new Dimension(25, 1));
 		
-		listMenu.add(dialogNewWin);
-		listMenu.add(menuSep);
-		listMenu.add(exportList);
-		listMenu.add(exportListAll);
-		
-		dialogNewWin.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					List arr				= list.getSelectedValuesList();	// Selected Title
-					int iListSize			= arr.size();
-					for(int i = 0; i < iListSize; i++)
-					{
-						new DialogSchemaView(ctx1, sSearch, (String) arr.get(i));
-					}
-				} catch (Exception e1) {
-					e1.printStackTrace();
+		listMenu.add(dialogNewWin).addActionListener(e -> {
+			try {
+				List arr				= list.getSelectedValuesList();	// Selected Title
+				int iListSize			= arr.size();
+				for(int i = 0; i < iListSize; i++)
+				{
+					new DialogSchemaView(ctx1, sSearch, (String) arr.get(i));
 				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
 			}
 		});
-		
-		exportList.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					HSSFWorkbook workbook	= new HSSFWorkbook();
-					List arr				= list.getSelectedValuesList();	// Selected Title
-		    		int[] arrIndex 			= list.getSelectedIndices();	// Selected Index
+		listMenu.add(new JSeparator());
+		listMenu.add(exportList).addActionListener(e -> {
+			try {
+				HSSFWorkbook workbook	= new HSSFWorkbook();
+				List arr				= list.getSelectedValuesList();	// Selected Title
+	    		int[] arrIndex 			= list.getSelectedIndices();	// Selected Index
 
-		    		int iArrSize			= arr.size();
-		    		String sViewType		= ((String) iconsList.get(SchemaConstants.VIEW_TYPE)).trim();
-		    		StringList slTypeList	= new StringList();
-		    		slTypeList.addAll(slMQLTypeList);
+	    		int iArrSize			= arr.size();
+	    		String sViewType		= ((String) iconsList.get(SchemaConstants.VIEW_TYPE)).trim();
+	    		StringList slTypeList	= new StringList();
+	    		slTypeList.addAll(slMQLTypeList);
 
-		    		if(!sViewType.contains(",")) {
-		    			sViewType			= new StringBuilder("").append(list.getModel().getSize()).append(",0,0").toString();
-		    		}
-		    		
-		    		StringList slFlag		= FrameworkUtil.split(sViewType, ",");
-		    		int iAddIndex			= Integer.parseInt((String) slFlag.get(0));
-		    		int iModIndex			= Integer.parseInt((String) slFlag.get(1));
+	    		if(!sViewType.contains(",")) {
+	    			sViewType			= new StringBuilder("").append(list.getModel().getSize()).append(",0,0").toString();
+	    		}
+	    		
+	    		StringList slFlag		= FrameworkUtil.split(sViewType, ",");
+	    		int iAddIndex			= Integer.parseInt((String) slFlag.get(0));
+	    		int iModIndex			= Integer.parseInt((String) slFlag.get(1));
 
-		    		StringList slAddList	= new StringList();
-		    		StringList slModList	= new StringList();
-		    		StringList slDelList	= new StringList();
-		    		for(int i = 0; i < iArrSize; i++)
-		    		{
-		    			int iArrIndex		= arrIndex[i];
-		    			
-		    			if(iArrIndex < iAddIndex) {
-		    				slAddList.add((String) arr.get(i));
-		    			} else if(iAddIndex <= iArrIndex && iArrIndex < (iAddIndex + iModIndex)) {
-		    				slModList.add((String) arr.get(i));
-		    			} else {
-		    				slDelList.add((String) arr.get(i));
-		    			}
-		    		}
-		    		
-		    		if(null != slAddList && slAddList.size() > 0) {
-		    			exportExcelCommon(ctx1, null, workbook, sSearch, slAddList, SchemaConstants.ADD_FLAG);
-		    		}
-	    			if(null != slModList && slModList.size() > 0) {
-		    			exportExcelCommon(ctx1, null, workbook, sSearch, slModList, SchemaConstants.MOD_FLAG);
-		    		}
-	    			if(null != slDelList && slDelList.size() > 0) {
-		    			exportExcelCommon(ctx1, null, workbook, sSearch, slDelList, SchemaConstants.DEL_FLAG);
-		    		}
+	    		StringList slAddList	= new StringList();
+	    		StringList slModList	= new StringList();
+	    		StringList slDelList	= new StringList();
+	    		for(int i = 0; i < iArrSize; i++)
+	    		{
+	    			int iArrIndex		= arrIndex[i];
 	    			
-	    			// Export Chooser
-	    			SchemaExport.exportExcelChooser(workbook);
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
+	    			if(iArrIndex < iAddIndex) {
+	    				slAddList.add((String) arr.get(i));
+	    			} else if(iAddIndex <= iArrIndex && iArrIndex < (iAddIndex + iModIndex)) {
+	    				slModList.add((String) arr.get(i));
+	    			} else {
+	    				slDelList.add((String) arr.get(i));
+	    			}
+	    		}
+	    		
+	    		if(null != slAddList && slAddList.size() > 0) {
+	    			exportExcelCommon(ctx1, null, workbook, sSearch, slAddList, SchemaConstants.ADD_FLAG);
+	    		}
+    			if(null != slModList && slModList.size() > 0) {
+	    			exportExcelCommon(ctx1, ctx2, workbook, sSearch, slModList, SchemaConstants.MOD_FLAG);
+	    		}
+    			if(null != slDelList && slDelList.size() > 0) {
+	    			exportExcelCommon(ctx1, null, workbook, sSearch, slDelList, SchemaConstants.DEL_FLAG);
+	    		}
+    			
+    			// Export Chooser
+    			SchemaExport.exportExcelChooser(workbook);
+			} catch (Exception e1) {
+				e1.printStackTrace();
 			}
 		});
-		
-		exportListAll.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					StringList slSelectList	= new StringList();
-					slSelectList.addAll(getJListAllItem());
-					HSSFWorkbook workbook	=  new HSSFWorkbook();
-					exportExcelCommon(ctx1, null, workbook, sSearch, slSelectList, SchemaConstants.ADD_FLAG);
-					
-	    			// Export Chooser
-	    			SchemaExport.exportExcelChooser(workbook);
-				} catch (Exception e1) {
-					e1.printStackTrace();
-				}
+		listMenu.add(exportListAll).addActionListener(e -> {
+			try {
+				HSSFWorkbook workbook	= new HSSFWorkbook();
+				StringList slSelectList	= new StringList();
+				slSelectList.addAll(getJListAllItem());
+//				List arr				= list.getSelectedValuesList();	// Selected Title
+//	    		int[] arrIndex 			= list.getSelectedIndices();	// Selected Index
+
+	    		int iArrSize			= slSelectList.size();
+	    		String sViewType		= ((String) iconsList.get(SchemaConstants.VIEW_TYPE)).trim();
+	    		StringList slTypeList	= new StringList();
+	    		slTypeList.addAll(slMQLTypeList);
+
+	    		if(!sViewType.contains(",")) {
+	    			sViewType			= new StringBuilder("").append(list.getModel().getSize()).append(",0,0").toString();
+	    		}
+	    		
+	    		StringList slFlag		= FrameworkUtil.split(sViewType, ",");
+	    		int iAddIndex			= Integer.parseInt((String) slFlag.get(0));
+	    		int iModIndex			= Integer.parseInt((String) slFlag.get(1));
+
+	    		StringList slAddList	= new StringList();
+	    		StringList slModList	= new StringList();
+	    		StringList slDelList	= new StringList();
+	    		for(int i = 0; i < iArrSize; i++)
+	    		{
+//	    			int iArrIndex		= slSelectList[i];
+	    			
+	    			if(i < iAddIndex) {
+	    				slAddList.add((String) slSelectList.get(i));
+	    			} else if(iAddIndex <= i && i < (iAddIndex + iModIndex)) {
+	    				slModList.add((String) slSelectList.get(i));
+	    			} else {
+	    				slDelList.add((String) slSelectList.get(i));
+	    			}
+	    		}
+	    		
+	    		if(null != slAddList && slAddList.size() > 0) {
+	    			exportExcelCommon(ctx1, null, workbook, sSearch, slAddList, SchemaConstants.ADD_FLAG);
+	    		}
+    			if(null != slModList && slModList.size() > 0) {
+	    			exportExcelCommon(ctx1, ctx2, workbook, sSearch, slModList, SchemaConstants.MOD_FLAG);
+	    		}
+    			if(null != slDelList && slDelList.size() > 0) {
+	    			exportExcelCommon(ctx1, null, workbook, sSearch, slDelList, SchemaConstants.DEL_FLAG);
+	    		}
+    			
+    			// Export Chooser
+    			SchemaExport.exportExcelChooser(workbook);
+			} catch (Exception e1) {
+				e1.printStackTrace();
 			}
 		});
 	}
 	
 	private static void exportExcelCommon(Context ctx1, Context ctx2, HSSFWorkbook workbook, String sSearch, StringList slDataList, String Flag) throws Exception {
 		StringBuilder sbResult	= new StringBuilder();
-		sbResult.append(SchemaExport.exportExcel(ctx1, null, workbook, sSearch, slDataList, Flag));
+		sbResult.append(SchemaExport.exportExcel(ctx1, ctx2, workbook, sSearch, slDataList, Flag));
 		SchemaExport.exportExcelSettingData(sSearch, Flag, workbook, sbResult.toString());
 	}
 
@@ -924,18 +961,34 @@ public class BusinessViewMain extends JFrame {
 	private static void setTabbedPaneDesign() {
 		tabPane = new JTabbedPaneCustom();
 		tabPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-		//tabPane.setBackground(Color.WHITE);
 	}
 	
 	public static void viewButtonAction() {
 		System.err.println("View Button Action");
-		progress.setIndeterminate(true);
+		boolean layerStop = false;
 		try {
     		List arr		= list.getSelectedValuesList();	// Selected Title
     		int[] arrIndex 	= list.getSelectedIndices();	// Selected Index
 		
     		int iArrSize	= arr.size();
     		int useIndex	= -1;
+
+    		if (iArrSize > 1) {
+    			progressVal = 0;
+    			progress2.setVisible(true);
+	    		SwingWorker<String, Void> worker = new BackgroundTask2() {
+					@Override
+					public void done() {
+						progress2.setVisible(false);
+					}
+				};
+				worker.addPropertyChangeListener(new ProgressListener(progress2));
+				worker.execute();
+    		} else {
+    			layerUI.start();
+    			layerStop	= true;
+    		}
+			
     		for(int i = 0; i < iArrSize; i++)
     		{
     			/*************** Get MQL ***************/
@@ -968,7 +1021,6 @@ public class BusinessViewMain extends JFrame {
         			StringList slFlag	= FrameworkUtil.split(sViewType, ",");
         			int iAddIndex		= Integer.parseInt((String) slFlag.get(0));
         			int iModIndex		= Integer.parseInt((String) slFlag.get(1));
-        			
         			if(iArrIndex < iAddIndex) {
         				sResult			= SchemaUtil.getSchema(ctx1, args);
         			} else if(iAddIndex <= iArrIndex && iArrIndex < (iAddIndex + iModIndex)) {
@@ -981,20 +1033,18 @@ public class BusinessViewMain extends JFrame {
     			
     			setTabContent(sResult, (String) arr.get(i), i, useIndex);
 
-//    			[LOG]
+    			// [LOG]
     			SchemaLogs.writeLogFile("VIEW  ", args[0] + " : " + args[1]);
-    			if(i > 0) {
-    				progress.setIndeterminate(false);
-    				progress.setValue((int) ((float) (i + 1) / (float) iArrSize * 100));
-    				ProgressBar.setProgressColor(progress.getValue());
-    			}
+				if(i >= 0 && iArrSize != 0) {
+    				progressVal = (int) ((float) (i + 1) / (float) iArrSize * 100);
+    			} 
     		}
 		} catch (FrameworkException e1) {
 			e1.printStackTrace();
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		} finally {
-			progress.setIndeterminate(false);
+			if(layerStop) layerUI.stop();
 		}
 	}
 	
@@ -1002,44 +1052,34 @@ public class BusinessViewMain extends JFrame {
 		System.err.println("Find Button Action");
 		long a = System.currentTimeMillis();
     	String sTxt	= txtField.getText().trim();
-    	LookAndFeel laf		= UIManager.getLookAndFeel();
+    	
     	try {
     		sSearch				= (String) comboMQLType.getSelectedItem();
     		if(sSearch.equals(SchemaConstants.OBJECT)) {	// Etc Object
-    			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-    			String sFindMQL		= JOptionPane.showInputDialog(null, "Type �엯�젰.\nex) Part, Part Family...");	// Input MQL Name
+    			String sFindMQL		= JOptionPane.showInputDialog(null, "Please, input Object Type.\nex) Part, Part Family...");	// Input MQL Name
     			if(null == sFindMQL)
     				return;
     			
     			sSearch				= sFindMQL.trim();
     		}
-    		
-    		progress.setIndeterminate(true);
-    		progress.setForeground(new Color(29, 219, 22, 95));
+    		layerUI.start();
     		
     		StringList slData	= SchemaCompareMain.compareListCommon(ctx1, ctx2, sSearch, sTxt, isFirst, optionCompare.isSelected());
             
 			list.removeAll();
 			String[] arr		= (String[]) slData.toArray(new String[slData.size()]);
 			list.setListData(arr);
-			list.setFixedCellHeight(25);
-			list.setSelectionBackground(lsb);
 			list.setCellRenderer(new IconListRenderer(iconsList));
 			list.setComponentPopupMenu(listMenu);
 			long b = System.currentTimeMillis();
 			System.err.println((b-a) + " ms");
 			
-//			[LOG]
+			// [LOG]
 			SchemaLogs.writeLogFile("SEARCH", sSearch + " : " + sTxt);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			progress.setIndeterminate(false);
-			try {
-				UIManager.setLookAndFeel(laf);
-			} catch (Exception e3) {
-				e3.printStackTrace();
-			}
+			layerUI.stop();
 		}
 	}
 	
@@ -1093,13 +1133,12 @@ public class BusinessViewMain extends JFrame {
 		
 		// Border border 		= BorderFactory.createTitledBorder("");
 		JTextArea txtArea	= new JTextArea();
-        txtArea.setLineWrap(false); //�븳以꾩씠 �꼫臾� 湲몃㈃ �옄�룞�쑝濡� 媛쒗뻾�븷吏� �꽕�젙
-        txtArea.setColumns(50); //�뿴�쓽 �겕湲�(媛�濡쒗겕湲�)
-        txtArea.setRows(10); //�뻾�쓽 �겕湲�(�꽭濡쒗겕湲�)
+        txtArea.setLineWrap(false); // Auto Wrap false 
+        txtArea.setColumns(50); 	//  Col Size 50
+        txtArea.setRows(10); 		// Row Size 10
         txtArea.setEditable(false);
         txtArea.setText(sResult);
         txtArea.getCaret().setVisible(true);
-        txtArea.setBackground(Color.WHITE);
         
         if(!optionDefault.isSelected()) {
 	        txtArea.setComponentPopupMenu(applyMenu);
@@ -1109,6 +1148,8 @@ public class BusinessViewMain extends JFrame {
         txtArea.addKeyListener(new KeyAdapter() {
         	@Override
         	public void keyReleased(KeyEvent e) {
+        		// Highlighter
+        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
     			isShift	= false;
         	}
         	
@@ -1133,28 +1174,37 @@ public class BusinessViewMain extends JFrame {
         			if(tabPane.getTabCount() > tabPane.getSelectedIndex() + 1)
         				tabPane.setSelectedIndex(tabPane.getSelectedIndex() + 1);
         		}
-        		
-        		// Highlighter
-        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
         	}
 		});
         
         txtArea.addMouseListener(new MouseAdapter() {
 			@Override
-			public void mousePressed(MouseEvent evt) {
+			public void mouseReleased(MouseEvent evt) {
 				if(!isShift)
 					HighlightTextAreaLine.tAreaHighlighter(txtArea);
 			}
 		});
         
         TextLineNumber tln 		= new TextLineNumber(txtArea);
-		JScrollPane scrollPane 	= new JScrollPane(txtArea);
-		scrollPane.setViewportView(txtArea);
-		//scrollPane.setBorder(border);
-		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS); // Horizontal Scroll Always View
-		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+		JScrollPane scrollPane 	= new JScrollPane(txtArea, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
+//		scrollPane.setViewportView(txtArea);
 		scrollPane.setRowHeaderView( tln );
-		scrollPane.setBackground(Color.WHITE);
+		scrollPane.addMouseWheelListener(new MouseWheelListener() {
+			@Override
+			public void mouseWheelMoved(MouseWheelEvent e) {
+				if (e.isControlDown())
+		        {
+					int iFontSize = tln.getFont().getSize();
+		            if (e.getWheelRotation() < 0) {
+		            	iFontSize++;
+		            } else {
+		            	iFontSize--;
+		            }
+		            tln.	setFont(new Font("D2Coding", java.awt.Font.PLAIN, iFontSize));
+		            txtArea.setFont(new Font("D2Coding", java.awt.Font.PLAIN, iFontSize));
+		        }
+			}
+		});
 		
 		txtArea.setCaretPosition(0);
 		
@@ -1184,6 +1234,7 @@ public class BusinessViewMain extends JFrame {
 		    properties	= initProperties();	// Get Properties
 			new BusinessViewMain();
 		} catch (Exception e) {
+			e.printStackTrace();
 		    /*
 		        ClassNotFoundException
 		        InstantiationException
@@ -1194,48 +1245,17 @@ public class BusinessViewMain extends JFrame {
 	}
 	
 	public static void initUIManager() {
-		UIManager.put("TabbedPane.borderHightlightColor", Color.WHITE); 
-	    UIManager.put("TabbedPane.darkShadow", Color.WHITE); 
-	    UIManager.put("TabbedPane.selected", new ColorUIResource(new Color(230, 230, 230, 90)));
-		UIManager.put("ComboBox.background", new ColorUIResource(Color.WHITE));
-        UIManager.put("ComboBox.selectionBackground", new ColorUIResource(UnSelColor));
-//        UIManager.put("ComboBox.selectionBackground", new ColorUIResource(lsb));
-//        218, 224, 241
-//        180, 205, 230
-        UIManager.put("Menu.border", BorderFactory.createLineBorder(Color.WHITE, 1));
-        UIManager.put("Menu.background", Color.WHITE);
-        UIManager.put("Menu.selectionBackground", new Color(212, 244, 250));
-        UIManager.put("MenuBar.background", new Color(200, 0, 0));
-        UIManager.put("MenuBar.selectionBackground", new Color(212, 244, 250));        
-        
-        UIManager.put("MenuItem.border", BorderFactory.createLineBorder(Color.WHITE, 1));
-        UIManager.put("MenuItem.background", Color.WHITE);
-        UIManager.put("MenuItem.selectionBackground", new Color(212, 244, 250));
-        
-        UIManager.put("PopupMenu.background", Color.WHITE);
-        UIManager.put("PopupMenu.border", BorderFactory.createLineBorder(Color.LIGHT_GRAY, 1));
-        
+		try {
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException ex) {
+			ex.printStackTrace();
+		}
+
 //        setUIFont(new javax.swing.plaf.FontUIResource("NanumGothicCoding", java.awt.Font.PLAIN, 14));	// All Component Setting Font
-        setUIFont(new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, 15));	// All Component Setting Font
+        setUIFont(new javax.swing.plaf.FontUIResource("D2Coding", java.awt.Font.PLAIN, fontSize));	// All Component Setting Font
 //        setUIFont(new javax.swing.plaf.FontUIResource("Consolas", java.awt.Font.PLAIN, 14));	// All Component Setting Font
-        
-//        try {
-//        for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-//            if ("Nimbus".equals(info.getName())) {
-//                javax.swing.UIManager.setLookAndFeel(info.getClassName());
-//                break;
-//            }
-//        }
-//        } catch (Exception e) {
-//        	e.printStackTrace();
-//        }
 	}
 	
-	private static void put(String string, Border createLineBorder) {
-		// TODO Auto-generated method stub
-		
-	}
-
 	public static Properties initProperties() {
 		try {
 			return SchemaProperties.getSchemaProperties();	// Get Properties
@@ -1280,4 +1300,87 @@ public class BusinessViewMain extends JFrame {
 		mTitleMap.put(sName, slList);
 		tabPane.remove(tabPane.getSelectedIndex());
 	}
+	
+		
+	public class KeyHandler implements KeyListener{
+        HashSet<Integer> pressedKeys = new HashSet<Integer>();
+        Timer timer;
+ 
+        public KeyHandler()
+        {
+            timer = new Timer(250, new ActionListener(){ // 300ms마다 액션 이벤트 발생
+                @Override
+                public void actionPerformed(ActionEvent arg0) // 300ms마다 발생한 액션 이벤트 처리
+                {  
+                    if(!pressedKeys.isEmpty()){
+                    	pressedKeys.clear();
+                    } else {
+                        timer.stop();
+                        sSearch				= (String) comboMQLType.getSelectedItem();
+                    	if(!sSearch.equals(SchemaConstants.OBJECT)) {	// Etc Object
+                    		ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_FIND);
+                    	}
+                    }
+                }
+            });
+        }
+ 
+        @Override
+        public void keyPressed(KeyEvent keyEvent){
+        	if(keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
+				ProgressBar.buttonClicked(SchemaConstants.BTNTYPE_FIND);
+			}
+        }
+        
+        @Override
+        public void keyReleased(KeyEvent keyEvent){
+            //HashSet에서 키코드를 제거한다
+            int keyCode = keyEvent.getKeyCode();
+            pressedKeys.remove(keyCode);
+        }
+        @Override
+        public void keyTyped(KeyEvent keyEvent){
+        	//발생한 키코드를 HsshSet에 저장한다
+            int keyCode = keyEvent.getKeyCode();
+            pressedKeys.add(keyCode);
+            if(!timer.isRunning()) timer.start();
+        }
+    }
 }
+
+class BackgroundTask2 extends SwingWorker<String, Void> {
+	@Override
+	public String doInBackground() {
+		int current = 0;
+		int lengthOfTask = 100;
+		while (current < lengthOfTask) {
+			try { // dummy task
+				Thread.sleep(10);
+			} catch (InterruptedException ex) {
+				return "Interrupted";
+			}
+			setProgress(100 * current / lengthOfTask);
+			current = (int) BusinessViewMain.progressVal;
+		}
+		return "Done";
+	}
+}
+
+class BackgroundTask extends SwingWorker<String, Void> {
+	@Override
+	public String doInBackground() {
+		int current = 0;
+		int lengthOfTask = 100;
+		while (current <= lengthOfTask && !isCancelled()) {
+			try { // dummy task
+				Thread.sleep(10);
+			} catch (InterruptedException ex) {
+				return "Interrupted";
+			}
+			setProgress(100 * current / lengthOfTask);
+			current++;
+		}
+		return "Done";
+	}
+}
+

@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,8 +26,8 @@ public class SchemaType {
             sbResult.append(SchemaUtil.createBusinessHeaderInfo(SchemaConstants.TYPE, name, true));
             String sDerived	= SchemaUtil.getData(context, "type", name, "derived");
 
-            sbResult.append("#del type '").append(name).append("';").append(SchemaConstants.RECORDSEP);
-            sbResult.append("add type '").append(name).append("'").append(SchemaConstants.RECORDSEP);
+//            sbResult.append("#del type '").append(name).append("';").append(SchemaConstants.RECORDSEP);
+//            sbResult.append("add type '").append(name).append("'").append(SchemaConstants.RECORDSEP);
 
             SchemaUtil.settingDataLine(sbResult, "description", (String) sl1.get(1), 12);
             if(!"".equals(sDerived))
@@ -97,7 +97,6 @@ public class SchemaType {
             String sDerived1 	= SchemaUtil.getData(ctx1, "type", name, "derived");
             String sDerived2 	= SchemaUtil.getData(ctx2, "type", name, "derived");
 
-            sbResult.append("mod type '").append(name).append("'").append(SchemaConstants.RECORDSEP);
             if(!sl1Mod.get(1).equals(sl1Ori.get(1)))
             	SchemaUtil.settingDataLine(sbResult, "description", (String) sl1Ori.get(1), 12);
             if(!sDerived1.equals(sDerived2))

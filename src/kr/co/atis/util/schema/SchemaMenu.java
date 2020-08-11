@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -75,7 +75,7 @@ public class SchemaMenu {
             sb2.append("# Parent Information").append(RECORDSEP);
             
             String strParent 	= SchemaUtil.getData(context, "menu", sName, "parent");
-            StringList list 	= FrameworkUtil.split(strParent, ",");
+            StringList list 	= FrameworkUtil.split(strParent, SchemaConstants.SELECT_SEPERATOR);
             StringItr listItr 	= new StringItr(list);
             while(listItr.next()){
                 String parentName 	= listItr.obj();

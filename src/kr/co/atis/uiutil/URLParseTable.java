@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.net.URLDecoder;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.swing.DefaultCellEditor;
@@ -19,6 +20,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 
 import com.matrixone.apps.domain.util.FrameworkUtil;
+import com.matrixone.apps.domain.util.MapList;
 
 import kr.co.atis.main.BusinessViewMain;
 import kr.co.atis.util.SchemaConstants;
@@ -46,6 +48,13 @@ public class URLParseTable {
 		StringList slHostList 	= FrameworkUtil.split(sURL, "?");
 		slParseList.add(slHostList.get(0)); // Host
 		slParseList.addAll(FrameworkUtil.split((String) slHostList.get(1), "&"));
+		for (int i = 1; i < slParseList.size(); i++) {
+			String sParse = ((String) slParseList.get(i)).trim();
+			if(sParse.equals("")) {
+				slParseList.remove(i);
+				i--;
+			}
+		}
 
 		int iListSize = slParseList.size();
 		// Data Setting
@@ -53,12 +62,34 @@ public class URLParseTable {
 
 		rowData[0][0] = "Host";
 		rowData[0][1] = (String) slParseList.get(0);
+		MapList mlList	= new MapList();
 		for (int i = 1; i < iListSize; i++) {
+			String sTemp 	= ((String) slParseList.get(i)).trim();
+			if("".equals(sTemp)) {
+				slParseList.remove(i);
+				i--;
+				iListSize--;
+			}
+			
 			StringList slTemp = FrameworkUtil.split((String) slParseList.get(i), "=");
-			rowData[i][0] = (String) slTemp.get(0);
-			rowData[i][1] = (String) slTemp.get(1);
-			rowData[i][2] = "...";
+			Map mParamMap	= new HashMap();
+			mParamMap.put("KEY", (String) slTemp.get(0));
+			if(slTemp.size() > 1) 
+				mParamMap.put("VALUE", (String) slTemp.get(1));
+			else {
+				mParamMap.put("VALUE", "");
+			}
+			mlList.add(mParamMap);
 		}
+		mlList.addSortKey("KEY", "ascending", "string");
+		mlList.sort();
+		for (int i = 0; i < (iListSize - 1); i++) {
+			Map mTemp	= (Map) mlList.get(i);
+			rowData[i+1][0] = (String) mTemp.get("KEY");
+			rowData[i+1][1] = (String) mTemp.get("VALUE");
+			rowData[i+1][2] = "...";
+		}
+		
 
 		// DefaultTableModel을 선언하고 데이터 담기
 		DefaultTableModel defaultTableModel = new DefaultTableModel(rowData, columnNames);

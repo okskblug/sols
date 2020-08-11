@@ -66,9 +66,10 @@ public class DialogSchemaView extends JFrame{
 					DomainObject dmObj = DomainObject.newInstance(ctx1, sTitle);
 					Map mInfo  = dmObj.getInfo(ctx1, slBusSelect);
 					slInfo.add((String) mInfo.get(SchemaConstants.SELECT_TYPE));
+					slInfo.add((String) mInfo.get(SchemaConstants.SELECT_TYPE));
 					slInfo.add((String) mInfo.get(SchemaConstants.SELECT_NAME));
 					slInfo.add((String) mInfo.get(SchemaConstants.SELECT_REVISION));
-					slInfo.add(SchemaConstants.ADD_FLAG);
+//					slInfo.add(SchemaConstants.ADD_FLAG);
 					
 			} else if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
 				slInfo.add(SchemaConstants.ADD_FLAG);
@@ -150,11 +151,7 @@ public class DialogSchemaView extends JFrame{
 			txtArea.setText(sResult);
 			txtArea.getCaret().setVisible(true);
 	        TextLineNumber tln		= new TextLineNumber(txtArea);
-			JScrollPane scrollPane	= new JScrollPane(txtArea);
-			scrollPane.setViewportView(txtArea);
-			//scrollPane.setBorder(border); // 경계 설정
-			scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS); //가로바정책
-			scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+			JScrollPane scrollPane	= new JScrollPane(txtArea, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
 			scrollPane.setRowHeaderView( tln );
 			scrollPane.setBackground(Color.WHITE);
 				
@@ -162,6 +159,8 @@ public class DialogSchemaView extends JFrame{
 			txtArea.addKeyListener(new KeyAdapter() {
 				@Override
 	        	public void keyReleased(KeyEvent e) {
+	        		// Highlighter
+	        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
 	    			isShift	= false;
 	        	}
 				
@@ -188,14 +187,11 @@ public class DialogSchemaView extends JFrame{
 								tabPane.setSelectedIndex(tabPane.getSelectedIndex() + 1);
 						}
 					}
-					
-	        		// Highlighter
-	        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
 				}
 			});
 	        txtArea.addMouseListener(new MouseAdapter() {
 	        	@Override
-	        	public void mousePressed(MouseEvent evt) {
+	        	public void mouseReleased(MouseEvent evt) {
 	        		if(!isShift)
 	        			HighlightTextAreaLine.tAreaHighlighter(txtArea);
 	        	}

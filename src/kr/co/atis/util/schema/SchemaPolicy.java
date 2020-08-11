@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.Iterator;
 
@@ -29,21 +29,22 @@ public class SchemaPolicy {
             int iDefault	= 4;
  
             sb.append(SchemaUtil.createBusinessHeaderInfo(SchemaConstants.POLICY, name, true));
-            SchemaUtil.settingDataLine(sb, "description", 	(String) sl1.get(iDesc), 	12);
-            SchemaUtil.settingDataLine(sb, "sequence", 		(String) sl1.get(iRev), 	12);
-            SchemaUtil.settingDataLine(sb, "store", 		(String) (sl1.size() > iStore ? sl1.get(iStore) : ""), 12);
+            SchemaUtil.settingDataLine(sb, "description", 	(String) sl1.get(iDesc), 	16);
+            SchemaUtil.settingDataLine(sb, "sequence", 		(String) sl1.get(iRev), 	16);
+            SchemaUtil.settingDataLine(sb, "store", 		(String) (sl1.size() > iStore ? sl1.get(iStore) : ""), 16);
             SchemaUtil.settingDataLine(sb, new StringBuffer(sl1.size() > iHidden ? (BooleanUtils.toBoolean((String)sl1.get(iHidden))?"":"not") : "").append("hidden").toString());
             
             String s2 		= SchemaUtil.getData(context, "policy", name, "type");
             StringList sl2 	= FrameworkUtil.split(s2, SchemaConstants.SELECT_SEPERATOR);
-            SchemaUtil.settingDataLine(sb, "type", StringUtils.join(sl2, "\",\""), 	12);
+            SchemaUtil.settingDataLine(sb, "type", StringUtils.join(sl2, "\",\""), 	16);
             
             String sFormat 		= SchemaUtil.getData(context, "policy", name, "format");
             StringList slFormat	= FrameworkUtil.split(sFormat, SchemaConstants.SELECT_SEPERATOR);
             slFormat.sort();
-            SchemaUtil.settingDataLine(sb, "format", StringUtils.join(slFormat, "\",\""), 	12);
-        	if(!"".equals(sl1.get(iDefault))) {
-        		SchemaUtil.settingDataLine(sb, "defaultFormat", (String) sl1.get(iDefault), 	12);
+            if(!sFormat.trim().equals("")) 
+            	SchemaUtil.settingDataLine(sb, "format", StringUtils.join(slFormat, "\",\""), 	16);
+        	if(iDefault < sl1.size() && !"".equals(sl1.get(iDefault))) {
+    			SchemaUtil.settingDataLine(sb, "defaultFormat", (String) sl1.get(iDefault), 	16);
         	}
 
         	String s3		= SchemaUtil.getData(context, "policy", name, "allstate state");
@@ -56,10 +57,10 @@ public class SchemaPolicy {
 				SchemaUtil.settingDataLine(sb, "'allstate'");
 				
 				String s8		= SchemaUtil.getData(context, "policy", name, "allstate.owneraccess");
-				SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 	12);
+				SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 	16);
 				
 				String s		= SchemaUtil.getData(context, "policy", name, "allstate.publicaccess");
-				SchemaUtil.settingDataLine(sb.append(_TAB), "public", s, 	12);
+				SchemaUtil.settingDataLine(sb.append(_TAB), "public", s, 	16);
 				
 				String s10	= MqlUtil.mqlCommand(context, new StringBuilder("print policy '").append(name).append("' select allstate.user.login").toString());
 				String s11	= MqlUtil.mqlCommand(context, new StringBuilder("print policy '").append(name).append("' select allstate.user").toString());
@@ -109,17 +110,19 @@ public class SchemaPolicy {
                 String result	= SchemaUtil.getData(context, "policy", name, new StringBuffer("state[").append(str).append("].revisionable").append(" state[").append(str).append("].versionable").append(" state[").append(str).append("].autopromote").append(" state[").append(str).append("].checkouthistory").toString());
                 StringList slResult	= FrameworkUtil.split(result, SchemaConstants.SELECT_SEPERATOR);
                 
-                SchemaUtil.settingDataLine(sb.append(_TAB), "revision", 		(String) slResult.get(0), 12);
-                SchemaUtil.settingDataLine(sb.append(_TAB), "version", 			(String) slResult.get(0), 12);
-                SchemaUtil.settingDataLine(sb.append(_TAB), "promote", 			(String) slResult.get(0), 12);
-                SchemaUtil.settingDataLine(sb.append(_TAB), "checkouthistory", 	(String) slResult.get(0), 12);
+                SchemaUtil.settingDataLine(sb.append(_TAB), "revision", 		(String) slResult.get(0), 16);
+                SchemaUtil.settingDataLine(sb.append(_TAB), "version", 			(String) slResult.get(0), 16);
+                SchemaUtil.settingDataLine(sb.append(_TAB), "promote", 			(String) slResult.get(0), 16);
+                SchemaUtil.settingDataLine(sb.append(_TAB), "checkouthistory", 	(String) slResult.get(0), 16);
                 
                 String s8 = SchemaUtil.getData(context, "policy", name, new StringBuffer("state[").append(str).append("].owneraccess").toString());
-                SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 12);
-                
-                String s9 = SchemaUtil.getData(context, "policy", name, new StringBuffer("state[").append(str).append("].publicaccess").toString());
-                SchemaUtil.settingDataLine(sb.append(_TAB), "public", s9, 12);
+//                SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 16);
+                sb.append(_TAB).append(_TAB).append(appendEmptySpace("owner", 16)).append(s8).append(SchemaConstants.RECORDSEP);
 
+                String s9 = SchemaUtil.getData(context, "policy", name, new StringBuffer("state[").append(str).append("].publicaccess").toString());
+//                SchemaUtil.settingDataLine(sb.append(_TAB), "public", s9, 16);
+                sb.append(_TAB).append(_TAB).append(appendEmptySpace("public", 16)).append(s9).append(SchemaConstants.RECORDSEP);
+                
                 sb.append(SchemaUtil.getTriggerForBusiness(context, "policy", new StringBuilder("print policy '").append(name).append("' select state[").append(str).append("].trigger dump ").append(SchemaConstants.SELECT_SEPERATOR).toString()));
                 
                 String s10 		= MqlUtil.mqlCommand(context, new StringBuilder("print policy '").append(name).append("' select state[").append(str).append("].user.login").toString());
@@ -130,8 +133,8 @@ public class SchemaPolicy {
                 StringList sl5 	= FrameworkUtil.split(s11, "\n");	// 0 line ~ user
 				StringList sl6 	= FrameworkUtil.split(s12, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
 
-				if(sl5.size() > 0 && !((String) sl5.get(0)).trim().startsWith("policy")) {	// exclude public, owner
-					for(int i = 0; i < sl4.size(); i++)
+				if(sl5.size() > 0) {	// exclude public, owner
+					for(int i = 1; i < sl5.size(); i++)
 	                {
 	                	String str2 = StringUtils.trim((String) sl4.get(i + 2));
 	                	String str3 = StringUtils.trim((String) sl5.get(i));
@@ -185,18 +188,17 @@ public class SchemaPolicy {
 
 			sb.append(SchemaConstants.NOTE_AREA).append(RECORDSEP);
 			sb.append(SchemaUtil.createBusinessHeaderInfo(SchemaConstants.POLICY, name, false));
-			sb.append("mod policy '").append(name).append("'").append(RECORDSEP);
 
 			if (!sl1Ori.get(iDesc).equals(sl1Mod.get(iDesc)))
-				SchemaUtil.settingDataLine(sb, "description", (String) sl1Ori.get(iDesc), 12);
+				SchemaUtil.settingDataLine(sb, "description", (String) sl1Ori.get(iDesc), 16);
 			if (!sl1Ori.get(iRev).equals(sl1Mod.get(iRev)))
-				SchemaUtil.settingDataLine(sb, "sequence", (String) sl1Ori.get(iRev), 12);
+				SchemaUtil.settingDataLine(sb, "sequence", (String) sl1Ori.get(iRev), 16);
 			if (!sl1Ori.get(iStore).equals(sl1Mod.get(iStore)))
-				SchemaUtil.settingDataLine(sb, "store", (String) sl1Ori.get(iStore), 12);
+				SchemaUtil.settingDataLine(sb, "store", (String) sl1Ori.get(iStore), 16);
 			if (!sl1Ori.get(iHidden).equals(sl1Mod.get(iHidden)))
 				SchemaUtil.settingDataLine(sb, BooleanUtils.toBoolean((String) sl1Ori.get(iHidden)) ? "hidden" : "nothidden");
 			if (!sl1Ori.get(iDefault).equals(sl1Mod.get(iDefault)))
-				SchemaUtil.settingDataLine(sb, "defaultFormat", (String) sl1Ori.get(iDefault), 12);
+				SchemaUtil.settingDataLine(sb, "defaultFormat", (String) sl1Ori.get(iDefault), 16);
 
 			String s2Ori = SchemaUtil.getData(ctx1, "policy", name, "type");
 			String s2Mod = SchemaUtil.getData(ctx2, "policy", name, "type");
@@ -250,7 +252,7 @@ public class SchemaPolicy {
 				if (strOri.equals(strMod)) {
 					String sStateMQL = SchemaUtil.getPolicyStateModMQL(ctx1, ctx2, name, strOri);
 					if (!"".equals(sStateMQL)) {
-						SchemaUtil.settingDataLine(sb, "state", strOri, 12);
+						SchemaUtil.settingDataLine(sb, "state", strOri, 16);
 						sb.append(sStateMQL);
 					}
 				}
@@ -259,31 +261,117 @@ public class SchemaPolicy {
 					// 2-1) 순서만 다른 경우 위치 변경 후 (내용 확인)
 					// 2-2) 없는 경우 (추가)
 					String sNextState = StringUtils.trimToEmpty((String) sl3Ori.get(i + 1));
-					sb.append(_TAB).append("add state '").append(strOri).append("' before '").append(sNextState)
-							.append("'").append(RECORDSEP);
+					sb.append(_TAB).append("add state '").append(strOri).append("' before '").append(sNextState).append("'").append(RECORDSEP);
 					if (!sl3Mod.contains(strOri)) {
-						SchemaUtil.settingDataLine(sb, "state", strOri, 12);
+						SchemaUtil.settingDataLine(sb, "state", strOri, 16);
 		                String s4Ori 		= SchemaUtil.getData(ctx1, "policy", name, new StringBuffer("state[").append(strOri).append("].revisionable state[").append(strOri).append("].versionable state[").append(strOri).append("].autopromote state[").append(strOri).append("].checkouthistory").toString());
 						StringList sl4Ori = FrameworkUtil.split(s4Ori, SchemaConstants.SELECT_SEPERATOR);
-						SchemaUtil.settingDataLine(sb.append(_TAB), "state", strOri, 12);
-						SchemaUtil.settingDataLine(sb.append(_TAB), "revision", (String) sl4Ori.get(0), 12);
-						SchemaUtil.settingDataLine(sb.append(_TAB), "version", (String) sl4Ori.get(1), 12);
-						SchemaUtil.settingDataLine(sb.append(_TAB), "promote", (String) sl4Ori.get(2), 12);
-						SchemaUtil.settingDataLine(sb.append(_TAB), "checkouthistory", (String) sl4Ori.get(3), 12);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "state", strOri, 16);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "revision", (String) sl4Ori.get(0), 16);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "version", (String) sl4Ori.get(1), 16);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "promote", (String) sl4Ori.get(2), 16);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "checkouthistory", (String) sl4Ori.get(3), 16);
 						String s8 = SchemaUtil.getData(ctx1, "policy", name, new StringBuffer("state[").append(strOri).append("].owneraccess").toString());
-						SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 12);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "owner", s8, 16);
 						String s9 = SchemaUtil.getData(ctx1, "policy", name, new StringBuffer("state[").append(strOri).append("].publicaccess").toString());
-						SchemaUtil.settingDataLine(sb.append(_TAB), "public", s9, 12);
+						SchemaUtil.settingDataLine(sb.append(_TAB), "public", s9, 16);
 
-						String s10 = SchemaUtil.getData(ctx1, "policy", name, new StringBuffer("state[").append(strOri).append("].access").toString());
-						StringList sl4 = FrameworkUtil.split(s10, "\n");
-						for (Iterator itr4 = sl4.iterator(); itr4.hasNext();) {
-							String str2 = StringUtils.trim((String) itr4.next());
-							if (StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy")) {
-								String[] strArr1 = StringUtils.split(str2, "=");
-								String strUser = StringUtils.remove(strArr1[0].trim(), "state[" + strOri + "].access");
-								strUser = StringUtils.substringBetween(strUser, "[", "]");
-								sb.append(_TAB).append(_TAB).append("user").append("  '").append(strUser).append("' ").append(strArr1[1].trim()).append(RECORDSEP);
+//						String s10 = SchemaUtil.getData(ctx1, "policy", name, new StringBuffer("state[").append(strOri).append("].access").toString());
+//						StringList sl4 = FrameworkUtil.split(s10, "\n");
+//						for (Iterator itr4 = sl4.iterator(); itr4.hasNext();) {
+//							String str2 = StringUtils.trim((String) itr4.next());
+//							if (StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy")) {
+//								String[] strArr1 = StringUtils.split(str2, "=");
+//								String strUser = StringUtils.remove(strArr1[0].trim(), "state[" + strOri + "].access");
+//								strUser = StringUtils.substringBetween(strUser, "[", "]");
+//								sb.append(_TAB).append(_TAB).append("user").append("  '").append(strUser).append("' ").append(strArr1[1].trim()).append(RECORDSEP);
+//							}
+//						}
+						
+						
+						String s10Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.login").toString());
+						String s10Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.login").toString());
+						String s11Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user").toString());                
+		                String s11Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user").toString());                
+		                String s12Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.access").toString());
+		                String s12Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.access").toString());
+
+		                StringList sl5Ori 	= FrameworkUtil.split(s10Ori, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+		                StringList sl6Ori 	= FrameworkUtil.split(s11Ori, "\n");	// 0 line ~ user
+						StringList sl7Ori 	= FrameworkUtil.split(s12Ori, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+						StringList sl5Mod 	= FrameworkUtil.split(s10Mod, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+						StringList sl6Mod 	= FrameworkUtil.split(s11Mod, "\n");	// 0 line ~ user
+						StringList sl7Mod 	= FrameworkUtil.split(s12Mod, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+
+						StringList slAccOri	= new StringList();
+						StringList slAccMod	= new StringList();
+						if(sl6Ori.size() > 0) {	// exclude public, owner
+							for(int j = 1; j < sl6Ori.size(); j++)
+			                {
+			                	String str2 = StringUtils.trim((String) sl5Ori.get(j + 2));
+			                	String str3 = StringUtils.trim((String) sl6Ori.get(j));
+			                	String str4 = StringUtils.trim((String) sl7Ori.get(j + 2));                
+			                
+			                	if(StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy"))
+			                	{
+			                		String sLogin		= StringUtils.split(str2, "=")[1].trim();
+			                		String sUser  		= StringUtils.split(str3, "=")[1].trim();
+			                		StringList slUsers = FrameworkUtil.split(sUser, "|");
+			                		String sAccess		= StringUtils.split(str4, "=")[1].trim();
+			                		StringBuffer sbTmp	= new StringBuffer(_TAB).append(_TAB);
+			                		if(sLogin.equalsIgnoreCase("true")) {
+			                			sbTmp.append("login user");
+			                		} else {
+			                			sbTmp.append("user");
+			                		}
+			                		sbTmp.append(" '").append(slUsers.get(0)).append("' ");
+			                		if(slUsers.size() > 1) {
+			                			sbTmp.append(" key '").append(slUsers.get(1)).append("' ");
+			                		}
+			                		sbTmp.append("  ").append(sAccess).append(RECORDSEP);
+			                		slAccOri.add(sbTmp.toString());
+			                	}
+			                }
+						}
+						if(sl6Mod.size() > 0) {	// exclude public, owner
+							for(int j = 1; j < sl6Mod.size(); j++)
+							{
+								String str2 = StringUtils.trim((String) sl5Mod.get(j + 2));
+								String str3 = StringUtils.trim((String) sl6Mod.get(j));
+								String str4 = StringUtils.trim((String) sl7Mod.get(j + 2));                
+								
+								if(StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy"))
+								{
+									String sLogin		= StringUtils.split(str2, "=")[1].trim();
+									String sUser  		= StringUtils.split(str3, "=")[1].trim();
+									StringList slUsers = FrameworkUtil.split(sUser, "|");
+									String sAccess		= StringUtils.split(str4, "=")[1].trim();
+									StringBuffer sbTmp	= new StringBuffer(_TAB).append(_TAB);
+									if(sLogin.equalsIgnoreCase("true")) {
+										sbTmp.append("login user");
+									} else {
+										sbTmp.append("user");
+									}
+									sbTmp.append(" '").append(slUsers.get(0)).append("' ");
+									if(slUsers.size() > 1) {
+										sbTmp.append(" key '").append(slUsers.get(1)).append("' ");
+									}
+									sbTmp.append("  ").append(sAccess).append(RECORDSEP);
+									slAccMod.add(sbTmp.toString());
+								}
+							}
+						}
+						
+						for(int j = 0; j < slAccOri.size(); j++) {
+							String sOri	= (String) slAccOri.get(j);
+							if(!slAccMod.contains(sOri)) {
+								sb.append(sOri);
+							}
+						}
+						for(int j = 0; j < slAccMod.size(); j++) {
+							String sMod	= (String) slAccMod.get(j);
+							if(!slAccOri.contains(sMod)) {
+								sb.append("remove ").append(sMod);
 							}
 						}
 					}
@@ -351,5 +439,17 @@ public class SchemaPolicy {
 		}
 
 		return sb.toString();
+	}
+	
+	private static String appendEmptySpace(String sKey, int maxLth) {
+		StringBuilder sbKey = new StringBuilder(sKey);
+		int iPropertyLth = sbKey.length();
+		if (iPropertyLth < maxLth) {
+			for (int j = iPropertyLth; j < maxLth; j++) {
+				sbKey.append(" ");
+			}
+		}
+
+		return sbKey.toString();
 	}
 }

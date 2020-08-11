@@ -2,8 +2,10 @@
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -12,6 +14,7 @@ import org.apache.commons.lang3.StringUtils;
 import com.matrixone.apps.domain.util.FrameworkException;
 import com.matrixone.apps.domain.util.FrameworkUtil;
 import com.matrixone.apps.domain.util.MqlUtil;
+import com.matrixone.apps.domain.util.eMatrixDateFormat;
 
 import kr.co.atis.main.BusinessViewMain;
 import kr.co.atis.util.schema.SchemaAttribute;
@@ -68,6 +71,7 @@ public class SchemaUtil {
 	private static StringBuilder EXPORT_SCHMA = new StringBuilder();
 	private static StringBuilder IMPORT_SCHMA = new StringBuilder();
 	public static StringBuilder STRING_RESOURCE = new StringBuilder();
+	private static List<SimpleDateFormat> formatList = null;
 
 	/**
 	 * Export
@@ -172,15 +176,15 @@ public class SchemaUtil {
 //				sbMQLCmd.append(findCommandNMenu(context, args[1]));
 
 			} else if (SchemaConstants.TRIGGER.equalsIgnoreCase(sSchemaType)) {
-				args[0] = args[1];	// args[0] = Name
-				args[1] = args[2];	// args[1] = Revision
-				args[2] = args[3];	// args[2] = "ADD" or "MOD"
+				args[0] = args[2];	// args[0] = Name
+				args[1] = args[3];	// args[1] = Revision
+				args[2] = args[4];	// args[2] = "ADD" or "MOD"
 				sbMQLCmd.append(SchemaTrigger.getTriggerMQL(context, args));
 
 			} else if (SchemaConstants.GENERATOR.equalsIgnoreCase(sSchemaType)) {
-				args[0] = args[1];	// args[0] = Name
-				args[1] = args[2];	// args[1] = Revision
-				args[2] = args[3];	// args[2] = "" or "MOD"
+				args[0] = args[2];	// args[0] = Name
+				args[1] = args[3];	// args[1] = Revision
+				args[2] = args[4];	// args[2] = "" or "MOD"
 				sbMQLCmd.append(SchemaGenerator.getGeneratorMQL(context, args));
 
 			} else if (SchemaConstants.COMMAND.equalsIgnoreCase(sSchemaType)) {
@@ -220,10 +224,11 @@ public class SchemaUtil {
 
 //				schemaMigration(context, args[1]);
 			} else if (!BusinessViewMain.slMQLTypeList.contains(sSchemaType)) { // another type !!!!!!! Last case
+//			} else if (SchemaConstants.OBJECT.equalsIgnoreCase(sSchemaType)) { // another type !!!!!!! Last case
 				sbMQLCmd.append(SchemaObject.getObjectMQL(context, args));
-				sSchemaType = args[0];
-				args[0] = args[1];
-				args[1] = args[2];
+				sSchemaType = args[1];
+				args[0] = args[2];
+				args[1] = args[3];
 			}
 
 			// get final Modified
@@ -284,7 +289,9 @@ public class SchemaUtil {
 				mqlCmd = SchemaTable.getTableModMQL(ctx1, ctx2, args[1]);
 
 			} else if (SchemaConstants.FORM.equalsIgnoreCase(sSchemaType)) {
-				mqlCmd = SchemaForm.getFormMQL(ctx1, args[1]);
+//				mqlCmd = SchemaForm.getFormMQL(ctx1, args[1]);
+				mqlCmd = SchemaForm.getFormSchemaMod(ctx1, ctx2, args[1]);
+				
 
 			} else if (SchemaConstants.FIND_HREF.equalsIgnoreCase(sSchemaType)) {
 				// mqlCmd = findCommandNMenu(context, args[1]);
@@ -400,6 +407,14 @@ public class SchemaUtil {
 				args[0] = args[1];
 				args[1] = args[2];
 				// mqlCmd = SchemaGenerator.getGeneratorModMQL(ctx1, args);
+			} else if (SchemaConstants.TABLE.equalsIgnoreCase(sSchemaType) 			|| SchemaConstants.FORM.equalsIgnoreCase(sSchemaType) 
+					|| SchemaConstants.COMMAND.equalsIgnoreCase(sSchemaType) 		|| SchemaConstants.MENU.equalsIgnoreCase(sSchemaType)
+					|| SchemaConstants.CHANNEL.equalsIgnoreCase(sSchemaType) 		|| SchemaConstants.PORTAL.equalsIgnoreCase(sSchemaType)
+					|| SchemaConstants.RELATIONSHIP.equalsIgnoreCase(sSchemaType) 	|| SchemaConstants.FORMAT.equalsIgnoreCase(sSchemaType)
+					|| SchemaConstants.ROLE.equalsIgnoreCase(sSchemaType) 			|| SchemaConstants.ATTRIBUTE.equalsIgnoreCase(sSchemaType)
+					|| SchemaConstants.TYPE.equalsIgnoreCase(sSchemaType) 			|| SchemaConstants.POLICY.equalsIgnoreCase(sSchemaType)
+					|| SchemaConstants.PROGRAM.equalsIgnoreCase(sSchemaType)) {
+				mqlCmd = getDeleteMQL(context, sSchemaType, args[1]);
 			}
 		} catch (IllegalArgumentException ie) {
 
@@ -457,17 +472,102 @@ public class SchemaUtil {
 		if (!s9Ori.equals(s9Mod))
 			sb.append(_TAB).append(_TAB).append("public").append("  ").append(s9Ori).append(RECORDSEP);
 
-		String s10Ori = MqlUtil.mqlCommand(ctx1, "print policy '" + name + "' select state[" + strOri + "].access");
-		String s10Mod = MqlUtil.mqlCommand(ctx2, "print policy '" + name + "' select state[" + strOri + "].access");
-		StringList sl5Ori = FrameworkUtil.split(s10Ori, "\n");
-		StringList sl5Mod = FrameworkUtil.split(s10Mod, "\n");
-		for (Iterator itr5 = sl5Ori.iterator(); itr5.hasNext();) {
-			String str2 = StringUtils.trim((String) itr5.next());
-			if (StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy")) {
-				String[] strArr1 = StringUtils.split(str2, "=");
-				String strUser = StringUtils.remove(strArr1[0].trim(), "state[" + strOri + "].access");
-				strUser = StringUtils.substringBetween(strUser, "[", "]");
-				sb.append(_TAB).append(_TAB).append("user").append("  '").append(strUser).append("' ").append(strArr1[1].trim()).append(RECORDSEP);
+//		String s10Ori = MqlUtil.mqlCommand(ctx1, "print policy '" + name + "' select state[" + strOri + "].access");
+//		String s10Mod = MqlUtil.mqlCommand(ctx2, "print policy '" + name + "' select state[" + strOri + "].access");
+//		StringList sl5Ori = FrameworkUtil.split(s10Ori, "\n");
+//		StringList sl5Mod = FrameworkUtil.split(s10Mod, "\n");
+//		for (Iterator itr5 = sl5Ori.iterator(); itr5.hasNext();) {
+//			String str2 = StringUtils.trim((String) itr5.next());
+//			if (StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy")) {
+//				String[] strArr1 = StringUtils.split(str2, "=");
+//				String strUser = StringUtils.remove(strArr1[0].trim(), "state[" + strOri + "].access");
+//				strUser = StringUtils.substringBetween(strUser, "[", "]");
+//				sb.append(_TAB).append(_TAB).append("user").append("  '").append(strUser).append("' ").append(strArr1[1].trim()).append(RECORDSEP);
+//			}
+//		}
+		String s10Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.login").toString());
+		String s10Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.login").toString());
+		String s11Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user").toString());                
+        String s11Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user").toString());                
+        String s12Ori 		= MqlUtil.mqlCommand(ctx1, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.access").toString());
+        String s12Mod 		= MqlUtil.mqlCommand(ctx2, new StringBuilder("print policy '").append(name).append("' select state[").append(strOri).append("].user.access").toString());
+
+        StringList sl5Ori 	= FrameworkUtil.split(s10Ori, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+        StringList sl6Ori 	= FrameworkUtil.split(s11Ori, "\n");	// 0 line ~ user
+		StringList sl7Ori 	= FrameworkUtil.split(s12Ori, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+		StringList sl5Mod 	= FrameworkUtil.split(s10Mod, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+		StringList sl6Mod 	= FrameworkUtil.split(s11Mod, "\n");	// 0 line ~ user
+		StringList sl7Mod 	= FrameworkUtil.split(s12Mod, "\n");	// 0 line : public, 1 line : owner, 2 line ~ user
+
+		StringList slAccOri	= new StringList();
+		StringList slAccMod	= new StringList();
+		if(sl6Ori.size() > 0) {	// exclude public, owner
+			for(int j = 1; j < sl6Ori.size(); j++)
+            {
+            	String str2 = StringUtils.trim((String) sl5Ori.get(j + 2));
+            	String str3 = StringUtils.trim((String) sl6Ori.get(j));
+            	String str4 = StringUtils.trim((String) sl7Ori.get(j + 2));                
+            
+            	if(StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy"))
+            	{
+            		String sLogin		= StringUtils.split(str2, "=")[1].trim();
+            		String sUser  		= StringUtils.split(str3, "=")[1].trim();
+            		StringList slUsers = FrameworkUtil.split(sUser, "|");
+            		String sAccess		= StringUtils.split(str4, "=")[1].trim();
+            		StringBuffer sbTmp	= new StringBuffer(_TAB).append(_TAB);
+            		if(sLogin.equalsIgnoreCase("true")) {
+            			sbTmp.append("login user");
+            		} else {
+            			sbTmp.append("user");
+            		}
+            		sbTmp.append(" '").append(slUsers.get(0)).append("' ");
+            		if(slUsers.size() > 1) {
+            			sbTmp.append(" key '").append(slUsers.get(1)).append("' ");
+            		}
+            		sbTmp.append("  ").append(sAccess).append(RECORDSEP);
+            		slAccOri.add(sbTmp.toString());
+            	}
+            }
+		}
+		if(sl6Mod.size() > 0) {	// exclude public, owner
+			for(int j = 1; j < sl6Mod.size(); j++)
+			{
+				String str2 = StringUtils.trim((String) sl5Mod.get(j + 2));
+				String str3 = StringUtils.trim((String) sl6Mod.get(j));
+				String str4 = StringUtils.trim((String) sl7Mod.get(j + 2));                
+				
+				if(StringUtils.isNotBlank(str2) && !"null".equals(str2) && !str2.startsWith("policy"))
+				{
+					String sLogin		= StringUtils.split(str2, "=")[1].trim();
+					String sUser  		= StringUtils.split(str3, "=")[1].trim();
+					StringList slUsers = FrameworkUtil.split(sUser, "|");
+					String sAccess		= StringUtils.split(str4, "=")[1].trim();
+					StringBuffer sbTmp	= new StringBuffer(_TAB).append(_TAB);
+					if(sLogin.equalsIgnoreCase("true")) {
+						sbTmp.append("login user");
+					} else {
+						sbTmp.append("user");
+					}
+					sbTmp.append(" '").append(slUsers.get(0)).append("' ");
+					if(slUsers.size() > 1) {
+						sbTmp.append(" key '").append(slUsers.get(1)).append("' ");
+					}
+					sbTmp.append("  ").append(sAccess).append(RECORDSEP);
+					slAccMod.add(sbTmp.toString());
+				}
+			}
+		}
+		
+		for(int j = 0; j < slAccOri.size(); j++) {
+			String sOri	= (String) slAccOri.get(j);
+			if(!slAccMod.contains(sOri)) {
+				sb.append(sOri);
+			}
+		}
+		for(int j = 0; j < slAccMod.size(); j++) {
+			String sMod	= (String) slAccMod.get(j);
+			if(!slAccOri.contains(sMod)) {
+				sb.append("remove ").append(sMod);
 			}
 		}
 
@@ -540,6 +640,7 @@ public class SchemaUtil {
 
 	/**
 	 * Used by Type, Policy, Relationship
+	 * Type, Relationship exists immediatetrigger
 	 * 
 	 * @param context
 	 * @param sType
@@ -551,10 +652,7 @@ public class SchemaUtil {
 
 		try {
 			String sTrigger = MqlUtil.mqlCommand(context, sQuery);
-			// String sTriggerImm = MqlUtil.mqlCommand(context,
-			// sQuery.replace("trigger",
-			// sType.equalsIgnoreCase(SchemaConstants.TYPE) ? "immediatetrigger"
-			// : "trigger"));
+			String sTriggerImm = MqlUtil.mqlCommand(context, sQuery.replace("immediatetrigger", "trigger"));
 			StringList slTriggerImm = new StringList();
 			// Immediate Trigger
 			if (sTrigger != null && !"".equals(sTrigger)) {
@@ -564,6 +662,7 @@ public class SchemaUtil {
 				StringList slTrigger = FrameworkUtil.split(sTrigger, "|");
 				for (Iterator itrTrigger = slTrigger.iterator(); itrTrigger.hasNext();) {
 					String sTr = (String) itrTrigger.next();
+					slTriggerImm.add(sTr);
 					String[] strArrTrg = sTr.split(":");
 
 					String strTriggerType = strArrTrg[0];
@@ -587,11 +686,9 @@ public class SchemaUtil {
 			}
 
 			// Inherited Trigger
-			if (sTrigger != null && !"".equals(sTrigger) && sType.equalsIgnoreCase(SchemaConstants.POLICY)) {
-				if (SchemaConstants.POLICY.equalsIgnoreCase(sType))
-					sbResult.append(_TAB);
+			if (sTriggerImm != null && !"".equals(sTriggerImm) && !sType.equalsIgnoreCase(SchemaConstants.POLICY)) {
 				sbResult.append(_TAB).append("# Inherited Trigger").append(RECORDSEP);
-				StringList slTrigger = FrameworkUtil.split(sTrigger, "|");
+				StringList slTrigger = FrameworkUtil.split(sTriggerImm, "|");
 				for (Iterator itrTrigger = slTrigger.iterator(); itrTrigger.hasNext();) {
 					String sTr = (String) itrTrigger.next();
 					if (slTriggerImm.indexOf(sTr) >= 0) {
@@ -604,7 +701,7 @@ public class SchemaUtil {
 
 					if (SchemaConstants.POLICY.equalsIgnoreCase(sType))
 						sbResult.append(_TAB);
-					sbResult.append(_TAB).append("trigger ");
+					sbResult.append(_TAB).append("#trigger ");
 					if (strTriggerType.endsWith("Action")) {
 
 						sbResult.append(StringUtils.substringBefore(strTriggerType, "Action")).append(" action");
@@ -638,15 +735,17 @@ public class SchemaUtil {
 	public static String getPropertyForBusiness(Context context, String sType, String name) {
 		StringBuilder sbResult = new StringBuilder();
 		try {
-			String propertys = MqlUtil.mqlCommand(context, new StringBuilder("print '").append(sType).append("' '").append(name).append("' select property.name dump ").append(SchemaConstants.SELECT_SEPERATOR).toString());
-			String propertyVals = MqlUtil.mqlCommand(context, new StringBuilder("print '").append(sType).append("' '").append(name).append("' select property.value dump ").append(SchemaConstants.SELECT_SEPERATOR).toString());
-			StringList slproperty = FrameworkUtil.split(propertys, SchemaConstants.SELECT_SEPERATOR);
-			StringList slpropertyValue = FrameworkUtil.split(propertyVals, SchemaConstants.SELECT_SEPERATOR);
+			String propertys = MqlUtil.mqlCommand(context, new StringBuilder("print '").append(sType).append("' '").append(name).append("' select property.name dump '#@#'").toString());
+			String propertyVals = MqlUtil.mqlCommand(context, new StringBuilder("print '").append(sType).append("' '").append(name).append("' select property.value dump '#@#'").toString());
+			String[] slproperty = propertys.split("#@#");
+			String[] slpropertyValue = propertyVals.split("#@#");
 
-			int iValSize = slpropertyValue.size();
+			if(propertys.trim().equals("")) return "";
+			
+			int iValSize = slpropertyValue.length;
 			for (int i = 0; i < iValSize; i++) {
-				String prop = (String) slpropertyValue.get(i);
-				String sPk = (String) slproperty.get(i);
+				String prop = (String) slpropertyValue[i];
+				String sPk = (String) slproperty[i];
 
 				sbResult.append(_TAB).append("property ").append(_TAB).append(appendEmptySpace(sPk)).append(" value '").append(prop).append("'").append(RECORDSEP);
 			}
@@ -710,7 +809,7 @@ public class SchemaUtil {
 	 * @return
 	 */
 	private static String getLastFinalModifiedObject(Context context, String sType, String sName, String sRevision) throws Exception {
-		SimpleDateFormat sdf1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aaa", Locale.US);
+//		SimpleDateFormat sdf1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aaa", Locale.US);
 		SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy. MM. dd hh:mm:ss aaa", Locale.US);
 		StringBuilder sbResult = new StringBuilder();
 		String sResult = "";
@@ -718,8 +817,8 @@ public class SchemaUtil {
 			sbResult.append(SchemaConstants.NOTE_AREA).append(RECORDSEP);
 			sResult = MqlUtil.mqlCommand(context, new StringBuilder("print bus '").append(sType).append("' '").append(sName).append("' '").append(sRevision).append("' select originated modified dump ").toString());
 			String[] results = sResult.split(",");
-			Date originated = sdf1.parse(results[0]);
-			Date modified = sdf1.parse(results[1]);
+			Date originated = autoChangeDate(results[0]);
+			Date modified = autoChangeDate(results[1]);
 			sbResult.append("# Created       : ").append(sdf2.format(originated)).append(RECORDSEP);
 			sbResult.append("# Last Modified : ").append(sdf2.format(modified)).append(RECORDSEP);
 		} catch (Exception e) {
@@ -736,7 +835,7 @@ public class SchemaUtil {
 	 * @return
 	 */
 	private static String getLastFinalModifiedBusiness(Context context, String sType, String sName) throws Exception {
-		SimpleDateFormat sdf1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aaa", Locale.US);
+//		SimpleDateFormat sdf1 = new SimpleDateFormat("MM/dd/yyyy hh:mm:ss", Locale.US);
 		SimpleDateFormat sdf2 = new SimpleDateFormat("yyyy. MM. dd hh:mm:ss aaa", Locale.US);
 		StringBuilder sbResult = new StringBuilder();
 		String sResult = "";
@@ -744,8 +843,10 @@ public class SchemaUtil {
 			sbResult.append(SchemaConstants.NOTE_AREA).append(RECORDSEP);
 			sResult = MqlUtil.mqlCommand(context, new StringBuilder("print '").append(sType).append("' '").append(sName).append("' ").append(sType.equalsIgnoreCase("table") ? "system" : "").append(" select originated modified dump ','").toString());
 			String[] results = sResult.split(",");
-			Date originated = sdf1.parse(results[0]);
-			Date modified = sdf1.parse(results[1]);
+
+			Date originated = autoChangeDate(results[0]);
+			Date modified = autoChangeDate(results[1]);
+			
 			sbResult.append("# Created       : ").append(sdf2.format(originated)).append(RECORDSEP);
 			sbResult.append("# Last Modified : ").append(sdf2.format(modified)).append(RECORDSEP);
 		} catch (Exception e) {
@@ -783,5 +884,75 @@ public class SchemaUtil {
 			sbResult.append("\"").append(sData).append("\"");
 		}
 		sbResult.append(SchemaConstants.RECORDSEP);
+	}
+	
+	private static String getDeleteMQL(Context context, String sType, String sName) {
+		StringBuffer sb	= new StringBuffer();
+		
+		sb.append(SchemaConstants.NOTE_AREA).append(RECORDSEP);
+		sb.append(createBusinessOnlyHeader(sType, sName));
+		
+		sb.append("#del '").append(sType).append("' '").append(sName).append("'");
+		if(sType.equalsIgnoreCase(SchemaConstants.TABLE))
+			sb.append(" system");
+		sb.append(";");
+
+		
+		return sb.toString();
+	}
+	
+	public static Date autoChangeDate(String date)
+	{
+		formatList = null;
+		if (formatList == null) {
+			formatList = new ArrayList<SimpleDateFormat>();
+//			formatList.add(defaultDisplay);
+//			formatList.add(dateFormat);
+//			formatList.add(calFormat);
+//			formatList.add(envFormat);
+			formatList.add(new SimpleDateFormat("yyyy. M. d"));
+			formatList.add(new SimpleDateFormat("yyyy. MM. dd"));
+			formatList.add(new SimpleDateFormat("yyyy-MM-dd"));
+			formatList.add(new SimpleDateFormat("yyyy-MM-dd a h:mm:ss"));
+			formatList.add(new SimpleDateFormat("yyyy-MM-dd aaa h:mm:ss"));
+			formatList.add(new SimpleDateFormat("yyyy-MM-dd a hh:mm:ss"));
+			formatList.add(new SimpleDateFormat("yyyymmdd"));
+			formatList.add(new SimpleDateFormat("yyyy/MM/dd"));
+			formatList.add(new SimpleDateFormat("MM/dd/yyyy"));
+			formatList.add(new SimpleDateFormat("MM/dd/yyyy hh:mm:ss"));
+			formatList.add(new SimpleDateFormat("MM/dd/yyyy hh:mm:ss aaa"));
+		}
+		Date dReturn = recursiveFindFormat(date, formatList);
+		return dReturn;
+	}
+
+	/**
+	 * recursive find format
+	 * 
+	 * @param String
+	 * @param int
+	 * @param String
+	 * @return Date
+     */
+	private static Date recursiveFindFormat(String date, List<SimpleDateFormat> formatList)
+    {
+		Date dDate = null;
+		SimpleDateFormat sdf = null;
+		for (Iterator<SimpleDateFormat> itr = formatList.iterator(); itr.hasNext();) {
+			try {
+				sdf = itr.next();
+				dDate = sdf.parse(date);
+				int i = date.indexOf("/");
+				if (i >= 0) {
+					String pattern = sdf.toPattern();
+					if (date.substring(0, i).length() != pattern.substring(0, pattern.indexOf("/")).length()) {
+						continue;
+					}
+				}
+				break;
+			} catch (Exception e) {
+			}
+		}
+		return dDate;
 	}
 }

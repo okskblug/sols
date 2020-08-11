@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.Iterator;
 
@@ -123,7 +123,7 @@ public class SchemaRole {
                 sbResult.append(RECORDSEP);
             }
             if( slParent != null && slParent.size() > 0 ) {
-            	sbResult.append(_TAB).append("parent      ");
+            	sbResult.append(_TAB).append("#parent      ");
             	for (Iterator rangeItr = slParent.iterator(); rangeItr.hasNext();) {
             		sbResult.append("'").append((String) rangeItr.next()).append("'");
             		if(rangeItr.hasNext())
@@ -131,7 +131,7 @@ public class SchemaRole {
             	}
             	sbResult.append(RECORDSEP);
             }
- 
+// 
             sbResult.append(SchemaUtil.getPropertyForBusiness(context, SchemaConstants.ROLE, name));	// Get Property
             sbResult.append(SchemaConstants.SEMI_COLON).append(RECORDSEP).append(RECORDSEP);
             sbResult.append("add property role_").append(StringUtils.deleteWhitespace(name)).append(" on program 'eServiceSchemaVariableMapping.tcl' to role '").append(name).append("';").append(RECORDSEP);
@@ -159,8 +159,8 @@ public class SchemaRole {
         StringBuilder sbResult = new StringBuilder();
         try {
         	sbResult.append(SchemaUtil.createBusinessHeaderInfo(SchemaConstants.ROLE, name, false));
-            sbResult.append("#del role '").append(name).append("';").append(RECORDSEP);
-            sbResult.append("mod role '").append(name).append("'").append(RECORDSEP);
+//            sbResult.append("#del role '").append(name).append("';").append(RECORDSEP);
+//            sbResult.append("mod role '").append(name).append("'").append(RECORDSEP);
 
             String sBasesOri		= SchemaUtil.getData(ctx1, "role", name, "hidden site maturity category");
             String sBasesMod		= SchemaUtil.getData(ctx2, "role", name, "hidden site maturity category");
@@ -236,10 +236,10 @@ public class SchemaRole {
             }
             
             // add parent
-            if(!sParentOri.equals(sParentMod)) {
-            	sbResult.append(_TAB).append("remove parent").append(RECORDSEP);
-            	sbResult.append(_TAB).append("parent '").append(sParentOri).append("'").append(RECORDSEP);
-            }
+//            if(!sParentOri.equals(sParentMod)) {
+//            	sbResult.append(_TAB).append("remove parent").append(RECORDSEP);
+//            	sbResult.append(_TAB).append("parent '").append(sParentOri).append("'").append(RECORDSEP);
+//            }
             sbResult.append(SchemaConstants.SEMI_COLON).append(RECORDSEP).append(RECORDSEP);
             sbResult.append("#add property role_").append(StringUtils.deleteWhitespace(name)).append(" on program 'eServiceSchemaVariableMapping.tcl' to role '").append(name).append("';").append(RECORDSEP);
         } catch (Exception e) {

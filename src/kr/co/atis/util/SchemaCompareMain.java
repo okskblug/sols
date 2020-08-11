@@ -57,7 +57,7 @@ public class SchemaCompareMain {
 	public static void compare(Context ctx1, Context ctx2, String sType, String[] arg) {
 		try {
 			Properties properties 	= SchemaProperties.getSchemaProperties();	// Get Properties
-			StringBuilder sb 		= new StringBuilder();
+			StringBuffer sb 		= new StringBuffer();
 			
 			sb.append("list '").append(sType).append("'");
 			if(sType.equalsIgnoreCase("table"))
@@ -124,9 +124,9 @@ public class SchemaCompareMain {
 				}
 			}
 			
-			mReturnMap.put(SchemaConstants.ADD_FLAG, 	slNotExistsList);
-			mReturnMap.put(SchemaConstants.MOD_FLAG, 	slNotEqualsList);
-			mReturnMap.put(SchemaConstants.DEL_FLAG, 	slDeleteList);
+			mReturnMap.put(SchemaConstants.ADD_FLAG, slNotExistsList);
+			mReturnMap.put(SchemaConstants.MOD_FLAG, slNotEqualsList);
+			mReturnMap.put(SchemaConstants.DEL_FLAG, slDeleteList);
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -148,7 +148,7 @@ public class SchemaCompareMain {
 				String sKey				= "";
 				
 				if(isObject) {
-					sKey				= new StringBuilder((String) slSelList.get(0)).append("|").append((String) slSelList.get(1)).append("|").append((String) slSelList.get(2)).toString();
+					sKey				= new StringBuffer((String) slSelList.get(0)).append("|").append((String) slSelList.get(1)).append("|").append((String) slSelList.get(2)).toString();
 					slSelList.remove(0);	// Type
 					slSelList.remove(0);	// Name
 					slSelList.remove(0);	// Revision
@@ -159,7 +159,15 @@ public class SchemaCompareMain {
 					}
 					map.put(sKey, mAttrMap);
 				} else {
-					sKey				= (String) slSelList.get(0);
+					if(sQuery.indexOf("select owner") > 0) {	// Only Attribute
+						if(((String) slSelList.get(0)).trim().equals("")) {
+							sKey				= (String) slSelList.get(1);
+						} else {
+							sKey				= new StringBuffer((String) slSelList.get(0)).append(".").append((String) slSelList.get(1)).toString();
+						}
+					} else {
+						sKey				= (String) slSelList.get(0);
+					}
 					slSelList.remove(0);
 					slSelList.sort();
 					map.put(sKey, slSelList);
@@ -230,10 +238,8 @@ public class SchemaCompareMain {
 		int iPreListSize		= 0;
 		
 		try {
-			StringBuilder sb1 	= new StringBuilder();
-			StringBuilder sb2 	= new StringBuilder();
-			sb1.append("list '").append(sSearch).append("' ");
-			sb2.append("list '").append(sSearch).append("' ");
+			StringBuffer sb1 	= new StringBuffer("list '").append(sSearch).append("' ");
+			StringBuffer sb2 	= new StringBuffer("list '").append(sSearch).append("' ");
 			if(sSearch.equalsIgnoreCase("table")) {
 				sb1.append(" system");
 				sb2.append(" system");
@@ -242,9 +248,9 @@ public class SchemaCompareMain {
 			if(!isFirst && isCompare) sb1.append(" modified after ").append(BusinessViewMain.sModified);
 			
 			if(!isFirst) {
-				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(sSearch + "_" + SchemaConstants.ADD_FLAG));
-				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(sSearch + "_" + SchemaConstants.MOD_FLAG));
-				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(sSearch + "_" + SchemaConstants.DEL_FLAG));
+				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.ADD_FLAG).toString()));
+				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.MOD_FLAG).toString()));
+				slPreList.addAll((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.DEL_FLAG).toString()));
 			}
 			 
 			sb1.append(" '").append(sTxt).append("*'");
@@ -259,16 +265,45 @@ public class SchemaCompareMain {
 			
 			if(!isCompare)	// Default Mode
 			{
+				sb1.delete(0, sb1.length());
+				boolean isSelected = BusinessViewMain.searchCaseSensitive.getModel().isSelected();
 				if(sSearch.equals(SchemaConstants.TRIGGER) || sSearch.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sSearch)) {
-					sb1.delete(0, sb1.length());
-					sb1.append("temp query bus '").append(sSearch).append("' '").append(sTxt).append("*' * select dump '|'");
+//					sb1.append("temp query bus '").append(sSearch).append("' '").append(sTxt).append("*' * select dump '|'");
+					sb1.append("temp query bus '").append(sSearch);
+					if(sTxt.trim().equals("")) {
+						sb1.append("' '").append(sTxt).append("*' * select dump '|'");
+					} else {
+						sb1.append("' '*' * where \"name ~~ '").append(sTxt).append("*'\" select dump '|'");
+					}
 					sResult			= MqlUtil.mqlCommand(ctx1, sb1.toString());
-					sResult			= sResult.replaceAll(sSearch+"\\|", "");
+//					sResult			= sResult.replaceAll(sSearch+"\\|", "");
+					slData			= FrameworkUtil.split(sResult, "\n");
 				} else {
+					sb1.append("list '").append(sSearch).append("' ");
+					if(sSearch.equalsIgnoreCase("table")) {
+						sb1.append(" system");
+					}
+					sb1.append(" '*'");
+						
 					sResult			= MqlUtil.mqlCommand(ctx1, sb1.toString());
+					slData			= FrameworkUtil.split(sResult, "\n");
+					for(int k = 0; k < slData.size(); k++) {
+						String sData	= (String) slData.get(k);
+						if(isSelected) {
+							if(!sData.contains(sTxt)) {
+								slData.remove(k);
+								k--;
+							}
+						} else {
+							if(!sData.toLowerCase().contains(sTxt.toLowerCase())) {
+								slData.remove(k);
+								k--;
+							}
+						}
+					}
 				}
 				
-				slData			= FrameworkUtil.split(sResult, "\n");
+				
 				slData.sort();
 				BusinessViewMain.iconsList.put(SchemaConstants.VIEW_TYPE, sSearch);	// Icon Control
 			}
@@ -308,8 +343,13 @@ public class SchemaCompareMain {
 		            }
 					
 				} else {
-	    			sb1.append(" select name");
-	    			sb2.append("' select name");
+					if(sSearch.equals(SchemaConstants.ATTRIBUTE)) {
+						sb1.append(" select owner name");
+						sb2.append("' select owner name");
+					} else {
+						sb1.append(" select name");
+						sb2.append("' select name");
+					}
 	    			for (int i = 0; i < arg.length; i++) {
 	    				sb1.append(" ").append(arg[i]);
 	    				sb2.append(" ").append(arg[i]);
@@ -317,7 +357,9 @@ public class SchemaCompareMain {
 				}
 				sb1.append(" dump |");
 				sb2.append(" dump |");
-				
+
+				System.err.println(sb1);
+				System.err.println(sb2);
 				if(sSearch.equals(SchemaConstants.TRIGGER) || sSearch.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sSearch)) {
 					mCompareMap1.putAll(SchemaCompareMain.compareObject(ctx1, ctx2, sb1.toString(), slAttrList));
 					if(!isFirst && iPreListSize > 0) mCompareMap2.putAll(SchemaCompareMain.compareObject(ctx1, ctx2, sb2.toString(), slAttrList));
@@ -339,13 +381,13 @@ public class SchemaCompareMain {
 				settingAutoCompareMap(sSearch, SchemaConstants.DEL_FLAG, mCompareMap1);
 
 				if(!isAuto) {
-					StringList slAddList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuilder(sSearch).append("_").append(SchemaConstants.ADD_FLAG).toString()), sTxt);
-					StringList slModList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuilder(sSearch).append("_").append(SchemaConstants.MOD_FLAG).toString()), sTxt);
-					StringList slDelList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuilder(sSearch).append("_").append(SchemaConstants.DEL_FLAG).toString()), sTxt);
+					StringList slAddList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.ADD_FLAG).toString()), sTxt);
+					StringList slModList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.MOD_FLAG).toString()), sTxt);
+					StringList slDelList	= getSearchFilterList((StringList) BusinessViewMain.mDefaultListMap.get(new StringBuffer(sSearch).append("_").append(SchemaConstants.DEL_FLAG).toString()), sTxt);
 					slData.addAll(slAddList);
 					slData.addAll(slModList);
 					slData.addAll(slDelList);
-					BusinessViewMain.iconsList.put(SchemaConstants.VIEW_TYPE, new StringBuilder("").append(slAddList.size()).append(",").append(slModList.size()).append(",").append(slDelList.size()).toString());	// Clear
+					BusinessViewMain.iconsList.put(SchemaConstants.VIEW_TYPE, new StringBuffer("").append(slAddList.size()).append(",").append(slModList.size()).append(",").append(slDelList.size()).toString());	// Clear
 				}
 			}
 		} catch (FrameworkException e) {
@@ -381,7 +423,7 @@ public class SchemaCompareMain {
 	 * @param mCompareMap	- get Compare List Map
 	 */
 	private static void settingAutoCompareMap(String sSearch, String sFlag, Map mCompareMap) {
-		String sKey	= new StringBuilder(sSearch).append("_").append(sFlag).toString();
+		String sKey	= new StringBuffer(sSearch).append("_").append(sFlag).toString();
 		
 		BusinessViewMain.mDefaultListMap.remove(sKey);
 		BusinessViewMain.mDefaultListMap.put(sKey, setDataList(sSearch, (StringList) mCompareMap.get(sFlag)));

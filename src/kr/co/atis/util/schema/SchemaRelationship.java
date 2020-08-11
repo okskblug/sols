@@ -61,7 +61,7 @@ public class SchemaRelationship {
         	SchemaUtil.settingDataLine(sbResult, bHidden?"hidden":"nothidden");
         	
         	SchemaUtil.settingDataLine(sbResult, "from");
-        	SchemaUtil.settingDataLine(sbResult.append(_TAB), "type", sFromType.replaceAll("\\|", "','"), 12);
+        	SchemaUtil.settingDataLine(sbResult.append(_TAB), "type", sFromType.replaceAll("\\|", "\",\""), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "meaning", 	(String) resultList.get(2), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "cardinality",(String) resultList.get(5), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "revision", 	(String) resultList.get(3), 12);
@@ -72,7 +72,7 @@ public class SchemaRelationship {
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), bConnection?"propagateconnection":"notpropagateconnection");
         	
         	SchemaUtil.settingDataLine(sbResult, "to");
-        	SchemaUtil.settingDataLine(sbResult.append(_TAB), "type", sToType.replaceAll("\\|", "','"), 12);
+        	SchemaUtil.settingDataLine(sbResult.append(_TAB), "type", sToType.replaceAll("\\|", "\",\""), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "meaning", 	(String) resultList.get(8), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "cardinality",(String) resultList.get(11), 12);
         	SchemaUtil.settingDataLine(sbResult.append(_TAB), "revision", 	(String) resultList.get(9), 12);
@@ -101,6 +101,7 @@ public class SchemaRelationship {
     	StringBuilder sbFrom	= new StringBuilder();
     	StringBuilder sbTo		= new StringBuilder();
         try {
+        	sbResult.append(SchemaConstants.NOTE_AREA).append(RECORDSEP);
         	sbResult.append(SchemaUtil.createBusinessHeaderInfo(SchemaConstants.RELATIONSHIP, name, false));
             
             String s1Ori 				= SchemaUtil.getData(ctx1, "relationship", name, "abstract sparse");
@@ -254,11 +255,11 @@ public class SchemaRelationship {
 				slTempMod.removeAll(slFromTypeOri);
 				
 				if(slTempMod.size() > 0) {
-					sbFrom.append(_TAB).append("remove type").append(_TAB).append("'").append(StringUtils.join(slTempMod, "','")).append("'").append(RECORDSEP);
+					sbFrom.append(_TAB).append(_TAB).append("remove type").append(_TAB).append("'").append(StringUtils.join(slTempMod, "','")).append("'").append(RECORDSEP);
 				}
 				
 				if(slTempOri.size() > 0) {
-					sbFrom.append(_TAB).append("add type").append(_TAB).append("'").append(StringUtils.join(slTempOri, "','")).append("'").append(RECORDSEP);
+					sbFrom.append(_TAB).append(_TAB).append("add type").append(_TAB).append("'").append(StringUtils.join(slTempOri, "','")).append("'").append(RECORDSEP);
 				}
         	}
         	

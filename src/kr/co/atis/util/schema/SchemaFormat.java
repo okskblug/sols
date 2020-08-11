@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;

@@ -69,6 +69,7 @@ public class ProgressBar {
 	 * Progressbar color
 	 * @param count
 	 */
+	@Deprecated
 	public static void setProgressColor(int count) {
 		Color color = null;
 		
@@ -83,6 +84,6 @@ public class ProgressBar {
 		} else if(count > 0)	{color = new Color(255, 0, 0, 95);	// RED
 		}
 		
-		BusinessViewMain.progress.setForeground(color);
+//		BusinessViewMain.progress.setForeground(color);
 	}
 }

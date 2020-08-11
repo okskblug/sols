@@ -9,9 +9,10 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EventObject;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -73,7 +74,8 @@ public class DialogSchemaChildrenView extends JFrame {
 	protected IconCellRenderer m_renderer;
 	protected IconCellEditor m_editor;
 	// Tab Title List
-	public static Map mTitleMap  = new HashMap(); // String , StringList
+	public static Map mTitleMap	= new HashMap(); // String , StringList
+	public static StringList mNameList	= new StringList();
 	
 	public DialogSchemaChildrenView() {}
 
@@ -85,11 +87,11 @@ public class DialogSchemaChildrenView extends JFrame {
 	 */
 	public DialogSchemaChildrenView(Context ctx1, String sType, String sTitle) {
 		try {
-			int iWidth			= 900;
-			int iHeight			= 700;
+			int iWidth			= 1200;
+			int iHeight			= 800;
 			String sResult		= "";
-			String sTemp       = "";
-	
+			String sTemp		= "";
+			BusinessViewMain.initUIManager();	// UI Setting
 	        try {
 				sResult               = MqlUtil.mqlCommand(ctx1, new StringBuilder("print ").append(sType).append(" '").append(sTitle).append("' select name dump ").toString());
 			} catch (Exception e) {
@@ -107,6 +109,7 @@ public class DialogSchemaChildrenView extends JFrame {
 	        
 	        if(sType.equalsIgnoreCase("type"))  findDerivative = true;  // Derivative View Check
 	        DefaultMutableTreeNode top = new DefaultMutableTreeNode(settingTreeIcon(sType, sTitle));
+	        mNameList.clear();
 	        settingModelMenuCommand(ctx1, sType, sTitle, top);
 	        
 	        m_model = new DefaultTreeModel(top);
@@ -126,6 +129,8 @@ public class DialogSchemaChildrenView extends JFrame {
 			m_tree.setInvokesStopCellEditing(true);
 
 			m_tree.addMouseListener(new TreeExpander());
+			m_tree.addKeyListener(new TreeExpanderKey());
+
 			
 			tabPane = new JTabbedPaneCustom();
 			tabPane.setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
@@ -139,11 +144,7 @@ public class DialogSchemaChildrenView extends JFrame {
 				}
 			});
 
-	        tabPane.addKeyListener(new KeyListener() {
-				@Override
-				public void keyTyped(KeyEvent e) {}
-				@Override
-				public void keyReleased(KeyEvent e) {}
+	        tabPane.addKeyListener(new KeyAdapter() {
 				@Override
 				public void keyPressed(KeyEvent e) {
 					if(e.isShiftDown() && e.isControlDown() && e.getKeyCode() == KeyEvent.VK_W){
@@ -198,9 +199,30 @@ public class DialogSchemaChildrenView extends JFrame {
 		HashMap mInformation	= new HashMap();
 		MapList childrenList	= new MapList();
 		
+		if(!mNameList.contains(sType.toLowerCase()+"|"+sTitle)) {
+			mNameList.add(sType.toLowerCase()+"|"+sTitle);	// dupChk
+		} else {
+			return;
+		}
+		
 		if(sType.equalsIgnoreCase(SchemaConstants.MENU)) {
 			mInformation 	= uiMenuBean.getMenu(ctx1, sTitle);
 			childrenList 	= (MapList) mInformation.get("children");
+			
+		} else if(sType.equalsIgnoreCase(SchemaConstants.ROLE)) {	// Role
+			try {
+				String child = MqlUtil.mqlCommand(ctx1, "print $1 $2 select $3 dump $4", new String[] { SchemaConstants.ROLE, sTitle, "child", "|" });
+				StringList slChild	= FrameworkUtil.split(child, "|");
+				slChild.sort();
+				for(int i = 0; i < slChild.size(); i++) {
+					Map mTemp	= new HashMap();
+					mTemp.put("name", slChild.get(i));
+					mTemp.put("type", SchemaConstants.ROLE);
+					childrenList.add(mTemp);
+				}
+			} catch (Exception ee) {
+				ee.printStackTrace();
+			}
 			
 		} else if(sType.equalsIgnoreCase(SchemaConstants.COMMAND)) {	// Command
 			mInformation 	= uiMenuBean.getCommand(ctx1, sTitle);
@@ -236,9 +258,23 @@ public class DialogSchemaChildrenView extends JFrame {
         		String name = (String)childMap.get("name");
         		String type = (String)childMap.get("type");
 
-        		DefaultMutableTreeNode child = new DefaultMutableTreeNode(settingTreeIcon(type, name));
-        		node.add(child);
-        		settingModelMenuCommand(ctx1, type, name, child);
+        		if(!mNameList.contains(type.toLowerCase()+"|"+name)) {
+        			if(type.equalsIgnoreCase(SchemaConstants.TYPE)) {
+	        			try {
+	        				String sTemp  = PropertyUtil.getSchemaProperty(ctx1, name);	// Schema Property Check
+	        		        if(!"".equals(sTemp)) {
+	        			        name = sTemp;
+	        			    }
+	        			} catch (Exception ee) {
+	        				ee.printStackTrace();
+	        			}
+        			}
+        			
+	        		DefaultMutableTreeNode child = new DefaultMutableTreeNode(settingTreeIcon(type, name));
+	        		node.add(child);
+	        		settingModelMenuCommand(ctx1, type, name, child);
+	        		mNameList.add(type.toLowerCase()+"|"+name);	// dupChk
+        		}
         	}
         }
 	}
@@ -269,6 +305,16 @@ public class DialogSchemaChildrenView extends JFrame {
 			
 			    if(slViewList.contains(sKey))
 			    {
+			    	if(sKey.equalsIgnoreCase(SchemaConstants.TYPE)) {
+	        			try {
+	        				String sTemp  = PropertyUtil.getSchemaProperty(ctx1, sVal);	// Schema Property Check
+	        		        if(!"".equals(sTemp)) {
+	        		        	sVal = sTemp;
+	        			    }
+	        			} catch (Exception ee) {
+	        				ee.printStackTrace();
+	        			}
+        			}
 				    sKey			= (String) mViewOption.get(sKey);
 				    DefaultMutableTreeNode child = new DefaultMutableTreeNode(settingTreeIcon(sKey, sVal));
             		node.add(child);
@@ -348,6 +394,14 @@ public class DialogSchemaChildrenView extends JFrame {
 		
 	}
 	
+	class TreeExpanderKey extends KeyAdapter  {
+        public void keyPressed(KeyEvent e) {
+    	    if(e.getKeyCode() == KeyEvent.VK_MULTIPLY) {
+    	    	DefaultMutableTreeNode nods = (DefaultMutableTreeNode) m_tree.getModel().getRoot();
+		        setNodeExpandedState(m_tree, nods, true);
+            }
+        }
+	}
 	class TreeExpander extends MouseAdapter {
 		public void mouseClicked(MouseEvent e) {
 			if (e.getClickCount() == 2) {	// Double Click
@@ -416,6 +470,8 @@ public class DialogSchemaChildrenView extends JFrame {
 					        txtArea.addKeyListener(new KeyAdapter() {
 					        	@Override
 					        	public void keyReleased(KeyEvent e) {
+					        		// Highlighter
+					        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
 					    			isShift	= false;
 					        	}
 					        	
@@ -437,15 +493,12 @@ public class DialogSchemaChildrenView extends JFrame {
 					        			if(tabPane.getTabCount() > tabPane.getSelectedIndex() + 1)
 					        				tabPane.setSelectedIndex(tabPane.getSelectedIndex() + 1);
 					        		}
-					        		
-					        		// Highlighter
-					        		HighlightTextAreaLine.tAreaHighlighterKeyCheck(e, txtArea);
 					        	}
 							});
 					        
 					        txtArea.addMouseListener(new MouseAdapter() {
 								@Override
-								public void mousePressed(MouseEvent evt) {
+								public void mouseReleased(MouseEvent evt) {
 									if(!isShift)
 										HighlightTextAreaLine.tAreaHighlighter(txtArea);
 								}
@@ -464,6 +517,24 @@ public class DialogSchemaChildrenView extends JFrame {
 			}
 		}
 	}
+	
+	
+	public static void setNodeExpandedState(JTree tree, DefaultMutableTreeNode node, boolean expanded) {
+        ArrayList<DefaultMutableTreeNode> list = Collections.list(node.children());
+        for (DefaultMutableTreeNode treeNode : list) {
+            setNodeExpandedState(tree, treeNode, expanded);
+        }
+        if (!expanded && node.isRoot()) {
+            return;
+        }
+        TreePath path = new TreePath(node.getPath());
+        if (expanded) {
+            tree.expandPath(path);
+        } else {
+            tree.collapsePath(path);
+        }
+    }
+	
 	
 	public static void removeTab() {
 		ButtonTabComponent btc = (ButtonTabComponent) tabPane.getTabComponentAt(tabPane.getSelectedIndex());

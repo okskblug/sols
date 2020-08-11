@@ -13,8 +13,7 @@ class SteppedComboBoxUI extends MetalComboBoxUI {
 			public void show() {
 				Dimension popupSize = ((SteppedComboBox) comboBox).getPopupSize();
 				popupSize.setSize(popupSize.width, getPopupHeightForRowCount(comboBox.getMaximumRowCount()));
-				Rectangle popupBounds = computePopupBounds(0, comboBox.getBounds().height, popupSize.width,
-						popupSize.height);
+				Rectangle popupBounds = computePopupBounds(0, comboBox.getBounds().height, popupSize.width, popupSize.height);
 				scroller.setMaximumSize(popupBounds.getSize());
 				scroller.setPreferredSize(popupBounds.getSize());
 				scroller.setMinimumSize(popupBounds.getSize());

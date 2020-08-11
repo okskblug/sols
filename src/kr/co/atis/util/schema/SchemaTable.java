@@ -70,7 +70,7 @@ public class SchemaTable {
 
                 SchemaUtil.settingDataLine(sb, SchemaConstants.COLUMN);
                 SchemaUtil.settingDataLine(sb.append(_TAB), SchemaConstants.NAME, 	sColumnName, 	12);
-                SchemaUtil.settingDataLine(sb.append(_TAB), SchemaConstants.LABEL, 	sColumnLabel, 	12);
+                SchemaUtil.settingDataLine(sb.append(_TAB), SchemaConstants.LABEL, 	sColumnLabel.replaceAll("\"", "'"), 	12);
 
                 
                 String expr 	= SchemaUtil.getData(context, "table", sName, new StringBuffer("column[").append(sColumnName).append("].expression").toString());
@@ -104,7 +104,7 @@ public class SchemaTable {
 
                 String sUsers 		= SchemaUtil.getData(context, "table", sName, new StringBuffer("column[").append(sColumnName).append("].user").toString());
                 if(sUsers.length() > 0) {
-                	StringList slUsers	= FrameworkUtil.split(sUsers, ",");
+                	StringList slUsers	= FrameworkUtil.split(sUsers, "|");
                 	for(Iterator itrs	= slUsers.iterator(); itrs.hasNext();) {
                 		sb.append(_TAB).append(_TAB).append("user ").append(_TAB).append("'").append((String) itrs.next()).append("'").append(RECORDSEP);
                 	}

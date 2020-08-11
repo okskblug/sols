@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -135,7 +135,6 @@ public class SchemaCommand {
      * @throws Exception
      */
     public static String getCommandModMQL(Context ctx1, Context ctx2, String sName) throws Exception{
-        String sExtension = StringUtils.substring(sName, sName.lastIndexOf(".")+1);
         try {
             StringBuilder sb 		= new StringBuilder();
             UIMenu uiMenuBean 		= new UIMenu();
@@ -151,8 +150,8 @@ public class SchemaCommand {
  
             String strLabelOri 			= StringUtils.trimToEmpty((String)mapMenuInfoOri.get(SchemaConstants.LABEL));
             String strLabelMod 			= StringUtils.trimToEmpty((String)mapMenuInfoMod.get(SchemaConstants.LABEL));
-            String strDescOri 			= StringUtils.trimToEmpty((String)mapMenuInfoOri.get(DomainObject.SELECT_DESCRIPTION));
-            String strDescMod 			= StringUtils.trimToEmpty((String)mapMenuInfoMod.get(DomainObject.SELECT_DESCRIPTION));
+            String strDescOri 			= StringUtils.trimToEmpty((String)mapMenuInfoOri.get(SchemaConstants.SELECT_DESCRIPTION));
+            String strDescMod 			= StringUtils.trimToEmpty((String)mapMenuInfoMod.get(SchemaConstants.SELECT_DESCRIPTION));
             String strHrefOri 			= StringUtils.trimToEmpty((String)mapMenuInfoOri.get(SchemaConstants.HREF));
             String strHrefMod 			= StringUtils.trimToEmpty((String)mapMenuInfoMod.get(SchemaConstants.HREF));
             String strAltOri 			= StringUtils.trimToEmpty((String)mapMenuInfoOri.get(SchemaConstants.ALT));
@@ -197,7 +196,6 @@ public class SchemaCommand {
             while(settingItrMod.hasNext())
             {
             	String settingName 	= (String) settingItrMod.next();
-//            	String settingValue = (String) settingMapMod.get(settingName);
         		sb.append(_TAB).append("remove ").append(SchemaConstants.SETTING).append(" \"").append(settingName).append("\"").append(RECORDSEP);
             }
             

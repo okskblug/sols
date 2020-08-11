@@ -6,10 +6,8 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import javax.swing.JFileChooser;
-import javax.swing.UIManager;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
-import kr.co.atis.main.BusinessViewMain;
 import kr.co.atis.uiutil.DialogSchemaView;
 
 public class SchemaLogs {
@@ -43,15 +41,11 @@ public class SchemaLogs {
 	 * @throws Exception
 	 */
 	public static void logsFileChooser() throws Exception {
-		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		
         JFileChooser chooser 	= new JFileChooser(System.getProperty("user.dir") + "/logs");
         chooser.setMultiSelectionEnabled(true);// MultiSelect
         chooser.setFileFilter(new FileNameExtensionFilter("log", "log"));
         int result 				= chooser.showOpenDialog(null);
 
-        UIManager.setLookAndFeel(BusinessViewMain.laf);
-        
         if (result == JFileChooser.APPROVE_OPTION) {
             File[] file = chooser.getSelectedFiles();
             

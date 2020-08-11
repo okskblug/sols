@@ -187,6 +187,7 @@ public abstract interface SchemaConstants extends DomainConstants, EngineeringCo
 	
 	/**
 	 * getViewOption, getViewOptionChange Set
+	 * required LowerCase
 	 * @return
 	 */
 	public static StringList getViewOption() {
@@ -205,6 +206,8 @@ public abstract interface SchemaConstants extends DomainConstants, EngineeringCo
 		slViewList.add("editrelationship");
 		slViewList.add("objectid");
 		slViewList.add("parentoid");
+		slViewList.add("commandname");
+		slViewList.add("portalcmdname");
 		
 		return slViewList;
 	}
@@ -213,6 +216,8 @@ public abstract interface SchemaConstants extends DomainConstants, EngineeringCo
 		Map mViewMap			= new HashMap();
 		
 		mViewMap.put("table", 			"table");
+		mViewMap.put("commandname", 	"command");
+		mViewMap.put("portalcmdname", 	"command");
 		mViewMap.put("toolbar", 		"menu");
 		mViewMap.put("tablemenu", 		"menu");
 		mViewMap.put("expandprogrammenu", 		"menu");
@@ -224,10 +229,6 @@ public abstract interface SchemaConstants extends DomainConstants, EngineeringCo
 		mViewMap.put("resequencerelationship", 	"relationship");
 		mViewMap.put("objectid", 	"Etc Object");
 		mViewMap.put("parentoid", 	"Etc Object");
-
-
-
-
 		
 		return mViewMap;
 	}

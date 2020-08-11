@@ -1,4 +1,4 @@
-﻿package kr.co.atis.util.schema;
+package kr.co.atis.util.schema;
 
 import java.util.Iterator;
 
@@ -64,6 +64,7 @@ public class SchemaAttribute {
             if( slTypeAttr != null && slTypeAttr.size() > 0 )
             {
                 int iListSize		= slTypeAttr.size();
+                slTypeAttr.sort();
                 for (int j = 0; j < iListSize; j++) {
                     String sAttr 		= (String) slTypeAttr.get(j);
                     StringList slAttrs 	= FrameworkUtil.split(sAttr, SchemaConstants.SELECT_SEPERATOR);
@@ -80,6 +81,7 @@ public class SchemaAttribute {
             if( slRelAttr != null && slRelAttr.size() > 0 )
             {
             	int iListSize		= slRelAttr.size();
+            	slRelAttr.sort();
             	for (int j = 0; j < iListSize; j++) {
             		String sAttr 		= (String) slRelAttr.get(j);
             		StringList slAttrs 	= FrameworkUtil.split(sAttr, SchemaConstants.SELECT_SEPERATOR);

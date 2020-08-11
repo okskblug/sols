@@ -10,8 +10,7 @@ import java.util.Date;
 
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
-import javax.swing.LookAndFeel;
-import javax.swing.UIManager;
+import javax.swing.SwingWorker;
 
 import org.apache.commons.io.FilenameUtils;
 import org.apache.poi.hssf.usermodel.HSSFCell;
@@ -25,6 +24,7 @@ import com.matrixone.apps.domain.util.FrameworkUtil;
 import com.matrixone.apps.domain.util.MqlUtil;
 
 import kr.co.atis.main.BusinessViewMain;
+import kr.co.atis.uiutil.ProgressListener;
 import matrix.db.Context;
 import matrix.util.StringList;
 
@@ -67,8 +67,6 @@ public class SchemaExport {
 	}
 	
 	public static void exportExcelChooser(HSSFWorkbook workbook) throws Exception {
-		UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		
         JFileChooser chooser 	= new JFileChooser();
         int result 				= chooser.showSaveDialog(null);
         chooser.setCurrentDirectory(new File(System.getProperty("user.home")));
@@ -92,7 +90,6 @@ public class SchemaExport {
 	            }
 			}
         }
-        UIManager.setLookAndFeel(BusinessViewMain.laf);
 	}
 	
 	
@@ -158,17 +155,14 @@ public class SchemaExport {
 	}
 	
 	
-	
-	
 	/****************************************************************************************************/
 	/*********** Export MQL File (*.mql) ****************************************************************/
 	/****************************************************************************************************/
+	private static String sFindMQL = "";
 	public static void exportMQLFile(String sType) {
 		try {
 			Context context		= BusinessViewMain.ctx1;
-			LookAndFeel laf		= UIManager.getLookAndFeel();
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-			String sFindMQL		= JOptionPane.showInputDialog(null, "Execute " + sType + " Name 입력.\nex) *, ATSMenu*");	// Input MQL Name
+			sFindMQL		= JOptionPane.showInputDialog(null, "Execute " + sType + " Name 입력.\nex) *, ATSMenu*");	// Input MQL Name
 			if(null == sFindMQL)
 				return;
 			
@@ -182,66 +176,94 @@ public class SchemaExport {
 				sFindMQL		= sFindMQL.substring(0, sFindMQL.length() - 1);
 			
 			if (response == JOptionPane.YES_OPTION) {
-	    		String sResult		= "";
-	    		StringList slData	= new StringList();
-	    		
-	    		StringBuilder sb 	= new StringBuilder();
-	    		sb.append("list ").append(sType);
-	    		if(sType.equalsIgnoreCase("table")) {
-	    			sb.append(" system");
-	    		}
-	    		sb.append(" '").append(sFindMQL).append("*'");
-	    		
-				if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
-					sb.delete(0, sb.length());
-					sb.append("temp query bus '").append(sType).append("' '").append(sFindMQL).append("*' * select dump '|'");
-					sResult					= MqlUtil.mqlCommand(context, sb.toString());
-					sResult					= sResult.replaceAll(sType+"\\|", "");
-				} else {
-					sResult					= MqlUtil.mqlCommand(context, sb.toString());
-				}
-				slData						= FrameworkUtil.split(sResult, "\n");
+				BusinessViewMain.progressVal = 0;
+				BusinessViewMain.progress2.setVisible(true);
 				
-				int iListSize				= slData.size();
-				StringList slDupChkList		= new StringList();
-				for(int i = 0; i < iListSize; i++)
-				{
-					String sInfo			= (String) slData.get(i);
-					StringList slInfo		= new StringList();
-	    			slInfo					= FrameworkUtil.split(sInfo, "|");
-	    			slInfo.add(0, sType);
-	    			
-	    			if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
-    					slInfo.add(SchemaConstants.ADD_FLAG);
-	    			}
-	    			
-	    			String[] args			= (String[]) slInfo.toArray(new String[slInfo.size()]);
-	    			String sTempName		= args[1];
-	    			sResult					= SchemaUtil.getSchema(context, args);
-	    			
-	    			if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
-	    				sTempName			= args[0];
-	    			}
-	    			
-					saveFile(sType, sTempName, sResult, SchemaConstants.SAVE_FILE_EXTENSION2, slDupChkList.contains(sTempName));
-					if(!slDupChkList.contains(sTempName)) slDupChkList.add(sTempName);
-				}
+				SwingWorker worker = new SwingWorker() {
+					@Override
+					public Object doInBackground() {
+						try {
+				    		String sResult		= "";
+				    		StringList slData	= new StringList();
+				    		
+				    		StringBuilder sb 	= new StringBuilder();
+				    		sb.append("list ").append(sType);
+				    		if(sType.equalsIgnoreCase("table")) {
+				    			sb.append(" system");
+				    		}
+				    		sb.append(" '").append(sFindMQL).append("*'");
+							
+							if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
+								sb.delete(0, sb.length());
+								sb.append("temp query bus '").append(sType).append("' '").append(sFindMQL).append("*' * select dump '|'");
+								sResult					= MqlUtil.mqlCommand(context, sb.toString());
+								sResult					= sResult.replaceAll(sType+"\\|", "");
+							} else {
+								sResult					= MqlUtil.mqlCommand(context, sb.toString());
+							}
+							slData						= FrameworkUtil.split(sResult, "\n");
+							
+							int iListSize				= slData.size();
+							StringList slDupChkList		= new StringList();
+							
+							for(int i = 0; i < iListSize; i++)
+							{
+								String sInfo			= (String) slData.get(i);
+								StringList slInfo		= new StringList();
+				    			slInfo					= FrameworkUtil.split(sInfo, "|");
+				    			slInfo.add(0, sType);
+				    			
+				    			if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
+			    					slInfo.add(SchemaConstants.ADD_FLAG);
+				    			}
+				    			
+				    			String[] args			= (String[]) slInfo.toArray(new String[slInfo.size()]);
+				    			String sTempName		= args[1];
+				    			sResult					= SchemaUtil.getSchema(context, args);
+				    			
+				    			if(sType.equals(SchemaConstants.TRIGGER) || sType.equals(SchemaConstants.GENERATOR) || !BusinessViewMain.slMQLTypeList.contains(sType)) {
+				    				sTempName			= args[0];
+				    			}
+				    			
+								saveFile(sType, sTempName, sResult, SchemaConstants.SAVE_FILE_EXTENSION2, slDupChkList.contains(sTempName));
+								if(!slDupChkList.contains(sTempName)) slDupChkList.add(sTempName);
+								
+								setProgress(100 * ((int) ((float) (i + 1) / (float) iListSize * 100)) / 100);
+							}
+						} catch (InterruptedException ex) {
+							return "Interrupted";
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+						return "done";
+					}
+
+					@Override
+					public void done() {
+						BusinessViewMain.progress2.setVisible(false);
+						
+						int response = JOptionPane.showConfirmDialog(null, "폴더를 여시겠습니까?\n다운로드 폴더 : C:/temp/" + sType + "/", "알림", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+						
+						if (response == JOptionPane.YES_OPTION) {
+							Desktop desktop = Desktop.getDesktop();        
+				            File dirToOpen = new File("C:\\temp\\" + sType + "\\");
+				            try {
+				            	desktop.open(dirToOpen);
+				                System.out.println("open");        
+				            } catch (Exception E) {        
+				                System.out.println("File Not Found");        
+				            }
+						}
+						try {
+							SchemaLogs.writeLogFile("INFO  ", "Execute MQL [" + sType + " : " + sFindMQL + "*]");	// [LOG]
+						} catch (Exception ee) {
+							ee.printStackTrace();
+						}
+					}
+				};
 				
-				response = JOptionPane.showConfirmDialog(null, "폴더를 여시겠습니까?\n다운로드 폴더 : C:/temp/" + sType + "/", "알림", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
-				UIManager.setLookAndFeel(laf);
-				
-				if (response == JOptionPane.YES_OPTION) {
-					Desktop desktop = Desktop.getDesktop();        
-		            File dirToOpen = new File("C:\\temp\\" + sType + "\\");
-		            try {
-		            	desktop.open(dirToOpen);
-		                System.out.println("open");        
-		            } catch (Exception E) {        
-		                System.out.println("File Not Found");        
-		            }
-				}
-				
-				SchemaLogs.writeLogFile("INFO  ", "Execute MQL [" + sType + " : " + sFindMQL + "*]");	// [LOG]
+				worker.addPropertyChangeListener(new ProgressListener(BusinessViewMain.progress2));
+				worker.execute();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -280,6 +302,20 @@ public class SchemaExport {
 
 		String outFilePath = documentDirectory + sName + suffix;
 		System.out.println("Save File Path : " + outFilePath);
+		if((sType.equalsIgnoreCase("table") || sType.equalsIgnoreCase("command")) && sName.contains(":")) {
+			outFilePath		= documentDirectory + sName.replaceAll(":", "_") + suffix;
+		}
+		if(sName.contains("/")) {
+			StringList slList		= FrameworkUtil.split(sName, "/");
+			StringBuffer sbFolder	= new StringBuffer(documentDirectory);
+			for(int i = 0; i < slList.size() - 1; i++) {
+				sbFolder.append(slList.get(i)).append(File.separator);
+			}
+			File tempFolder				= new File(sbFolder.toString());
+			if (!tempFolder.exists()) {
+				boolean bCreated		= tempFolder.mkdirs();
+			}
+		}
 		statusLog = new FileWriter(outFilePath, true);
 
 		statusLog.flush();

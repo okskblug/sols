@@ -91,9 +91,10 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
 	public TextLineNumber(JTextComponent component, int minimumDisplayDigits) {
 		this.component = component;
 
-		setFont(component.getFont());
+		setFont(new javax.swing.plaf.FontUIResource("Andale Mono", java.awt.Font.PLAIN, 13));
 
 		setBorderGap(5);
+		setForeground(Color.LIGHT_GRAY);
 		setCurrentLineForeground(Color.RED);
 		//setBackground(new Color(217, 229, 255));
 		setBackground(Color.WHITE);
@@ -274,6 +275,11 @@ public class TextLineNumber extends JPanel implements CaretListener, DocumentLis
 				int x = getOffsetX(availableWidth, stringWidth) + insets.left;
 				int y = getOffsetY(rowStartOffset, fontMetrics);
 				g.drawString(lineNumber, x, y);
+				
+				if(isCurrentLine(rowStartOffset)) {
+					g.setColor(new Color(0, 0, 255, 30));
+					g.fillRect(0, y - fontMetrics.getHeight() + 4, availableWidth + stringWidth + insets.left, fontMetrics.getHeight());
+				}
 
 				// Move to the next row
 

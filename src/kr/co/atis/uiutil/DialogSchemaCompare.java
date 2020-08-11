@@ -41,19 +41,6 @@ public class DialogSchemaCompare extends JFrame{
 			String sHeader		= new StringBuilder(sTitle).append("_").append((isDefault) ? "DEFAULT" : "COMPARE").toString();
 	
 	        setTitle(sHeader);
-	        Border border 		= BorderFactory.createTitledBorder("");
-			JTextArea txtArea1 	= new JTextArea();
-			txtArea1.setLineWrap(false); //한줄이 너무 길면 자동으로 개행할지 설정
-			txtArea1.setColumns(70); //열의 크기(가로크기)
-			txtArea1.setRows(100); //행의 크기(세로크기)
-			txtArea1.setEditable(false);
-			
-			JTextArea txtArea2 	= new JTextArea();
-	        txtArea2.setLineWrap(false); //한줄이 너무 길면 자동으로 개행할지 설정
-	        txtArea2.setColumns(70); //열의 크기(가로크기)
-	        txtArea2.setRows(100); //행의 크기(세로크기)
-	        txtArea2.setEditable(false);
-	        
 			StringList slInfo	= new StringList();
 			slInfo				= FrameworkUtil.split(sTitle, "|");
 			slInfo.add(0, sType);
@@ -63,33 +50,13 @@ public class DialogSchemaCompare extends JFrame{
 			String[] args				= (String[]) slInfo.toArray(new String[slInfo.size()]);
 			sResult1					= SchemaUtil.getSchema(ctx1, args);
 			sResult2					= SchemaUtil.getSchema(ctx2, args);
-			System.err.println(sResult1);
-			System.err.println(sResult2);
 			Map mReturnMap				= TextLineCompare(sType, sResult1, sResult2);
+			
 			//StringList slLineList1		= (StringList) mReturnMap.get("DEFAULT");
 			//StringList slLineList2		= (StringList) mReturnMap.get("COMPARE");
+			JScrollPane scrollPane1		= DialogSchemaView.DialogSchemaViewCommon(new JFrame(), sType, sTitle, sResult1);
+			JScrollPane scrollPane2		= DialogSchemaView.DialogSchemaViewCommon(new JFrame(), sType, sTitle, sResult2);
 			
-			txtArea1.setText(sResult1);
-			txtArea2.setText(sResult2);
-			txtArea1.getCaret().setVisible(true);
-			txtArea2.getCaret().setVisible(true);
-	        TextLineNumber tln1		= new TextLineNumber(txtArea1);
-	        TextLineNumber tln2		= new TextLineNumber(txtArea2);
-			JScrollPane scrollPane1	= new JScrollPane(txtArea1);
-			JScrollPane scrollPane2	= new JScrollPane(txtArea2);
-			scrollPane1.setViewportView(txtArea1);
-			scrollPane2.setViewportView(txtArea2);
-			scrollPane1.setBorder(border); // 경계 설정
-			scrollPane2.setBorder(border); // 경계 설정
-			scrollPane1.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS); //가로바정책
-			scrollPane2.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS); //가로바정책
-			scrollPane1.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-			scrollPane2.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-			scrollPane1.setRowHeaderView( tln1 );
-			scrollPane2.setRowHeaderView( tln2 );
-			scrollPane1.setBackground(new Color(0, 84, 255, 80));
-			scrollPane2.setBackground(new Color(0, 84, 255, 80));
-	
 			JTabbedPane tabPane1 = new JTabbedPaneCustom();
 			JTabbedPane tabPane2 = new JTabbedPaneCustom();
 			tabPane1.addTab("Default", scrollPane1);
